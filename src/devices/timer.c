@@ -90,10 +90,18 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-  printf("hello");
   ASSERT (intr_get_level () == INTR_ON);
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
+
+/* 
+! Project 1 목표 (Alarm_clock) : 
+
+! 현재 timer_sleep은 thread_yield를 통해서 running_state -> ready_state tick이 다할때까지 반복.
+! 이를 timer_sleep을 변형하여 timer_sleep을 running -> blocked -> (after ticks) -> ready
+! 로 설정해주어야 한다.
+*/
+
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
