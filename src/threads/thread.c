@@ -602,7 +602,8 @@ bool cmp_priority_desc(const struct list_elem *a, const struct list_elem *b, voi
 }
 
 void run_higher_priority_thread() {
-  if (list_empty(&ready_list)) return;
+  if (list_empty(&ready_list))
+    return;
 
   struct thread *cur = thread_current();
   struct thread *next = list_entry(list_front(&ready_list), struct thread, elem);
