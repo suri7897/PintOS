@@ -208,7 +208,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  run_higher_priority_thread();
+  run_higher_priority_thread(); //* added
   return tid;
 }
 
@@ -245,7 +245,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  //~ list_push_back (&ready_list, &cur->elem);
+  //* list_push_back (&ready_list, &cur->elem);
   list_insert_ordered (&ready_list, &t->elem, cmp_priority_desc, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -317,7 +317,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-    //~ list_push_back (&ready_list, &cur->elem);
+    //* list_push_back (&ready_list, &cur->elem);
     list_insert_ordered (&ready_list, &cur->elem, cmp_priority_desc, NULL);
   cur->status = THREAD_READY;
   schedule ();
@@ -346,7 +346,7 @@ void
 thread_set_priority (int new_priority) 
 { 
   thread_current ()->priority = new_priority;
-  run_higher_priority_thread();
+  run_higher_priority_thread(); //* added
 }
 
 /* Returns the current thread's priority. */
