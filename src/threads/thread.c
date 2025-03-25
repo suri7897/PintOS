@@ -71,6 +71,11 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+//* newly added functions.
+//* declared in the end
+bool cmp_priority_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+void run_higher_priority_thread(void);
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -590,8 +595,10 @@ allocate_tid (void)
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 //* Newly added functions
-bool cmp_priority_desc(struct list_elem *a, struct list_elem *b, void *aux UNUSED) {
-  return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
+bool cmp_priority_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+  struct thread *t1 = list_entry(a, struct thread, elem);
+  struct thread *t2 = list_entry(b, struct thread, elem);
+  return t1->priority > t2->priority;
 }
 
 void run_higher_priority_thread() {
