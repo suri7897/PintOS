@@ -88,11 +88,10 @@ timer_elapsed (int64_t then)
    be turned on. */
 void
 timer_sleep (int64_t ticks) 
-{
+{ 
   int64_t start = timer_ticks ();
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  thread_sleep(ticks+start); // ! sleep current thread
 
 /* 
 ! Project 1 목표 (Alarm_clock) : 
@@ -100,8 +99,8 @@ timer_sleep (int64_t ticks)
 ! 현재 timer_sleep은 thread_yield를 통해서 running_state -> ready_state tick이 다할때까지 반복.
 ! 이를 timer_sleep을 변형하여 timer_sleep을 running -> blocked -> (after ticks) -> ready
 ! 로 설정해주어야 한다.
+! 다행히 block, unblock은 thread_block(), thread_unblock(thread)로 구현되어있어서 sleep만 구현하면 된다.
 */
-
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -180,6 +179,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  thread_wakeup(ticks); // ! tick(interrupt) 마다 wakeup.
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

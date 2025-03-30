@@ -28,6 +28,12 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+/*
+! sleep_list를 추가하여 sleep중인 thread의 list를 만든다.
+*/
+
+static struct list sleep_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -92,10 +98,10 @@ void run_higher_priority_thread(void);
 void thread_init(void)
 {
   ASSERT(intr_get_level() == INTR_OFF);
-
-  lock_init(&tid_lock);
-  list_init(&ready_list);
-  list_init(&all_list);
+  lock_init (&tid_lock);
+  list_init (&ready_list);
+  list_init (&all_list);
+  list_init (&sleep_list); // ! initialize sleep_list
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread();
@@ -319,6 +325,56 @@ void thread_yield(void)
   intr_set_level(old_level);
 }
 
+/*
+! sleep 명령을 받은 thread를 처리하기 위한 함수 (thread_sleep)
+*/
+void
+thread_sleep (int64_t ticks)
+{
+  //! thread_yield 함수를 참고하여 작성
+  struct thread *cur = thread_current ();
+  enum intr_level old_level;
+
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+
+  if (cur != idle_thread){
+    cur->wake_tick = ticks;
+    list_push_back (&sleep_list, &cur->elem);
+    thread_block();
+  }
+  
+  // ! schedule()은 thread_block()에서 호출되므로 필요하지 않다.
+
+  intr_set_level (old_level);
+}
+
+/*
+! wake_up 구현
+*/
+
+void
+thread_wakeup (int64_t ticks)
+{
+  //! thread_foreach 함수를 참고하여 작성
+  struct list_elem *e;
+  ASSERT(intr_get_level() == INTR_OFF);
+  
+  /*
+  ! 모든 sleep_list 안에 있는 thread에 대해서 현재 tick과 wakeup tick을 비교 -> 
+  ! 만약에 작으면 바로 unblock 진행.
+  */
+
+  for (e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
+    struct thread *t = list_entry(e, struct thread, allelem);
+    if(t->wake_tick <= ticks){
+      e = list_remove(e);
+      thread_unblock(t);
+    }
+  }     
+}
+
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void thread_foreach(thread_action_func *func, void *aux)
@@ -330,7 +386,7 @@ void thread_foreach(thread_action_func *func, void *aux)
   for (e = list_begin(&all_list); e != list_end(&all_list);
        e = list_next(e))
   {
-    struct thread *t = list_entry(e, struct thread, allelem);
+    struct thread *t = list_entry(e, struct thread, elem);
     func(t, aux);
   }
 }
