@@ -89,6 +89,9 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 { 
+  if(ticks <= 0) //! ticks should be larger than 0
+    return;
+  ASSERT(ticks > 0);
   int64_t start = timer_ticks ();
   ASSERT (intr_get_level () == INTR_ON);
   thread_sleep(ticks+start); // ! sleep current thread

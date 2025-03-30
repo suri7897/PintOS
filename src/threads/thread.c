@@ -345,7 +345,7 @@ thread_sleep (int64_t ticks)
     thread_block();
   }
   
-  // ! schedule()은 thread_block()에서 호출되므로 필요하지 않다.
+  // ! schedule()은 thread_block
 
   intr_set_level (old_level);
 }
@@ -367,9 +367,10 @@ thread_wakeup (int64_t ticks)
   */
 
   for (e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
-    struct thread *t = list_entry(e, struct thread, allelem);
+    struct thread *t = list_entry(e, struct thread, elem);
     if(t->wake_tick <= ticks){
       e = list_remove(e);
+      e = list_prev(e); // ! for에서 리스트가 자동으로 갱신되므로 remove를 하고 다시 전으로 돌아와야함.
       thread_unblock(t);
     }
   }     
@@ -386,7 +387,7 @@ void thread_foreach(thread_action_func *func, void *aux)
   for (e = list_begin(&all_list); e != list_end(&all_list);
        e = list_next(e))
   {
-    struct thread *t = list_entry(e, struct thread, elem);
+    struct thread *t = list_entry(e, struct thread, allelem);
     func(t, aux);
   }
 }
