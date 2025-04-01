@@ -145,6 +145,14 @@ Of course it would be not that serious in PintOS, since it is not real operating
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
 
+I considered other designs. One approach is to insert threads into the ready list without 
+any particular order. Then, whenever a thread needs to be selected, the system iterates through 
+the entire list to find the one with the highest priority. However, this process takes time due to 
+the need to traverse the list.
+To optimize this, I decided to maintain the ready list in order by priority, ensuring that the 
+highest-priority thread is always at the front. This way, selecting the next thread to run becomes 
+more efficient, as it can simply dequeue the front thread without searching the entire list.
+
         ADVANCED SCHEDULER
         ==================
 
