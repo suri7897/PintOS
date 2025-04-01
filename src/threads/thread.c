@@ -82,6 +82,9 @@ static tid_t allocate_tid(void);
 bool cmp_priority_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void run_higher_priority_thread(void);
 
+//! newly added functions.
+bool cmp_waketick_inc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -341,7 +344,8 @@ thread_sleep (int64_t ticks)
 
   if (cur != idle_thread){
     cur->wake_tick = ticks;
-    list_push_back (&sleep_list, &cur->elem);
+    // ! list_push_back (&sleep_list, &cur->elem);
+    list_insert_ordered(&sleep_list, &cur->elem, cmp_waketick_inc, NULL);
     thread_block();
   }
   
@@ -359,7 +363,6 @@ thread_wakeup (int64_t ticks)
 {
   //! thread_foreach 함수를 참고하여 작성
   struct list_elem *e;
-  ASSERT(intr_get_level() == INTR_OFF);
   
   /*
   ! 모든 sleep_list 안에 있는 thread에 대해서 현재 tick과 wakeup tick을 비교 -> 
@@ -368,7 +371,10 @@ thread_wakeup (int64_t ticks)
 
   for (e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
     struct thread *t = list_entry(e, struct thread, elem);
-    if(t->wake_tick <= ticks){
+    if(t->wake_tick > ticks){
+      return; // ! 만약 앞에 있는 element가 
+    }
+    else{
       e = list_remove(e);
       e = list_prev(e); // ! for에서 리스트가 자동으로 갱신되므로 remove를 하고 다시 전으로 돌아와야함.
       thread_unblock(t);
@@ -650,4 +656,12 @@ void run_higher_priority_thread()
   struct thread *next = list_entry(list_front(&ready_list), struct thread, elem);
   if (cur->priority < next->priority)
     thread_yield();
+}
+
+// ! sleep_list 정렬
+bool cmp_waketick_inc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+  struct thread *t1 = list_entry(a, struct thread, elem);
+  struct thread *t2 = list_entry(b, struct thread, elem);
+  return t1->wake_tick < t2->wake_tick;
 }
