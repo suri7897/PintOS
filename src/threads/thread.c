@@ -15,6 +15,7 @@
 #include "userprog/process.h"
 #endif
 
+
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
    of thread.h for details. */
@@ -372,7 +373,11 @@ thread_wakeup (int64_t ticks)
   for (e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
     struct thread *t = list_entry(e, struct thread, elem);
     if(t->wake_tick > ticks){
-      return; // ! 만약 앞에 있는 element가 
+      return; 
+      /*
+      ! 만약 sleep_list가 wake_tick에 대해 오름차순으로 정렬되어 있다면, 
+      ! 앞에 있는 element의 wake_tick이 현재 tick보다 높으면 다른 thread들을 확인 안해도 됨.
+      */ 
     }
     else{
       e = list_remove(e);
@@ -658,7 +663,7 @@ void run_higher_priority_thread()
     thread_yield();
 }
 
-// ! sleep_list 정렬
+// ! sleep_list 오름차순으로 정렬
 bool cmp_waketick_inc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
   struct thread *t1 = list_entry(a, struct thread, elem);
