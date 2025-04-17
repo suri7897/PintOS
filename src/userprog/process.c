@@ -44,6 +44,52 @@ tid_t process_execute(const char* file_name)
     return tid;
 }
 
+//* added
+void argument_passing(int argc, char** argv, struct intr_frame* if_)
+{
+    // Copy all argument strings onto the user stack in reverse order
+    // and record their addresses for argv[i] pointers
+    char* arg_addr[argc]; // store the addresses where each argument string is stored
+    for (int i = argc - 1; i >= 0; i--) {
+        int arg_len = strlen(argv[i]);
+        memcpy(if_->esp, argv[i], arg_len + 1); // add 1 for NULL
+        if_->esp -= arg_len;
+        arg_addr[i] = if_->esp; // keep track of where each argument string is placed on the stack
+    }
+
+    // Align the stack pointer to 4-byte boundary (padding)
+    uintptr_t raw_esp = (uintptr_t)if_->esp;
+    uintptr_t aligned_esp = raw_esp & ~0x3;
+    if_->esp = (void*)aligned_esp; // round down to a multiple of 4
+    size_t padding = raw_esp - aligned_esp; // use size_t because it's unsigned,
+                                            // normally used when handling memory
+    memset((void*)aligned_esp, 0, padding); // initialise the padding space
+                                            // not necessary but security purpose
+
+    // Push argv[argc] = NULL to mark end of argument list
+    memset(if_->esp, 0, sizeof(char*));
+    if_->esp -= sizeof(char*); // 4 bytes
+
+    // Push pointers to each argument string (argv[0] ~ argv[argc-1])
+    for (int i = argc - 1; i >= 0; i--) {
+        memcpy(if_->esp, &arg_addr[i], sizeof(char*));
+        if_->esp -= sizeof(char*); // 4 bytes
+    }
+
+    // Push argv (pointer to argv[0])
+    memset(if_->esp, &argv, sizeof(char**)); // 4 bytes
+    if_->esp -= sizeof(char**); // 4 bytes
+
+    // Push argc
+    memset(if_->esp, argc, sizeof(int)); // 4 bytes
+    if_->esp -= sizeof(int); // 4 bytes
+
+    // Push return address
+    memset(if_->esp, 0, sizeof(void*)); // 4 bytes
+    if_->esp -= sizeof(void*); // 4 bytes
+}
+//*
+
 /* A thread function that loads a user process and starts it
    running. */
 static void
@@ -69,6 +115,11 @@ start_process(void* file_name_)
     //*
 
     success = load(argv[0], &if_.eip, &if_.esp);
+    //* added
+    if (success)
+        argument_passing(argc, argv, &if_); /* you can do this in load()
+                                               but, it's better to seperate */
+    //*
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
