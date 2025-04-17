@@ -50,7 +50,8 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
     // Copy all argument strings onto the user stack in reverse order
     // and record their addresses for argv[i] pointers
     char* arg_addr[argc]; // store the addresses where each argument string is stored
-    for (int i = argc - 1; i >= 0; i--) {
+    int i;
+    for (i = argc - 1; i >= 0; i--) {
         int arg_len = strlen(argv[i]);
         memcpy(if_->esp, argv[i], arg_len + 1); // add 1 for NULL
         if_->esp -= arg_len;
@@ -71,13 +72,13 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
     if_->esp -= sizeof(char*); // 4 bytes
 
     // Push pointers to each argument string (argv[0] ~ argv[argc-1])
-    for (int i = argc - 1; i >= 0; i--) {
+    for (i = argc - 1; i >= 0; i--) {
         memcpy(if_->esp, &arg_addr[i], sizeof(char*));
         if_->esp -= sizeof(char*); // 4 bytes
     }
 
     // Push argv (pointer to argv[0])
-    memset(if_->esp, &argv, sizeof(char**)); // 4 bytes
+    memcpy(if_->esp, &argv, sizeof(char**)); // 4 bytes
     if_->esp -= sizeof(char**); // 4 bytes
 
     // Push argc
@@ -108,18 +109,22 @@ start_process(void* file_name_)
     //* added
     int argc = 0;
     char *token = file_name, *save_ptr, *argv[512];
-    while (token = strtok_r(token, ' ', &save_ptr)) {
-        if (token != ' ')
+    while (token = strtok_r(token, " ", &save_ptr)) {
+        if (token != " ")
             argv[argc++] = token;
     }
     //*
 
     success = load(argv[0], &if_.eip, &if_.esp);
     //* added
-    if (success)
+    if (!success)
+        return -1;
+    else
         argument_passing(argc, argv, &if_); /* you can do this in load()
                                                but, it's better to seperate */
     //*
+
+    hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
