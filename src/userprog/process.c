@@ -37,8 +37,14 @@ tid_t process_execute(const char* file_name)
         return TID_ERROR;
     strlcpy(fn_copy, file_name, PGSIZE);
 
+    //! added (get process name / first token of the input)
+    char* process_name;
+    char* save_ptr;
+    process_name = strtok_r(file_name, " ", &save_ptr);
+    //! 
+
     /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+    tid = thread_create(process_name, PRI_DEFAULT, start_process, fn_copy);
     if (tid == TID_ERROR)
         palloc_free_page(fn_copy);
     return tid;
@@ -52,10 +58,12 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
     char* arg_addr[argc]; // store the addresses where each argument string is stored
     int i;
     for (i = argc - 1; i >= 0; i--) {
-        int arg_len = strlen(argv[i]);
-        memcpy(if_->esp, argv[i], arg_len + 1); // add 1 for NULL
-        if_->esp -= arg_len;
+        int arg_len = strlen(argv[i]) + 1; //! add 1 for NULL
+        if_->esp -= arg_len; //! change order
+        memcpy(if_->esp, argv[i], arg_len); 
+        
         arg_addr[i] = if_->esp; // keep track of where each argument string is placed on the stack
+        printf("%s is stacked.\n", argv[i]);
     }
 
     // Align the stack pointer to 4-byte boundary (padding)
@@ -68,26 +76,32 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
                                             // not necessary but security purpose
 
     // Push argv[argc] = NULL to mark end of argument list
+    if_->esp -= sizeof(char*); // 4 bytes //! change order
     memset(if_->esp, 0, sizeof(char*));
-    if_->esp -= sizeof(char*); // 4 bytes
+    
 
     // Push pointers to each argument string (argv[0] ~ argv[argc-1])
     for (i = argc - 1; i >= 0; i--) {
+      if_->esp -= sizeof(char*); // 4 bytes //! change order
         memcpy(if_->esp, &arg_addr[i], sizeof(char*));
-        if_->esp -= sizeof(char*); // 4 bytes
+        
     }
 
     // Push argv (pointer to argv[0])
-    memcpy(if_->esp, &argv, sizeof(char**)); // 4 bytes
-    if_->esp -= sizeof(char**); // 4 bytes
+    void *argv_start = if_->esp; //! start of argv[0]
+    if_->esp -= sizeof(char**); // 4 bytes // ! change order
+    memcpy(if_->esp, &argv_start, sizeof(char**)); // 4 bytes
+
 
     // Push argc
-    memset(if_->esp, argc, sizeof(int)); // 4 bytes
-    if_->esp -= sizeof(int); // 4 bytes
+    if_->esp -= sizeof(int); // 4 bytes //! change order
+    memcpy(if_->esp, &argc, sizeof(int)); // 4 bytes
+
 
     // Push return address
+    if_->esp -= sizeof(void*); // 4 bytes //! change order
     memset(if_->esp, 0, sizeof(void*)); // 4 bytes
-    if_->esp -= sizeof(void*); // 4 bytes
+
 }
 //*
 
@@ -108,12 +122,21 @@ start_process(void* file_name_)
 
     //* added
     int argc = 0;
-    char *token = file_name, *save_ptr, *argv[512];
-    while (token = strtok_r(token, " ", &save_ptr)) {
-        if (token != " ")
-            argv[argc++] = token;
+    char *token, *save_ptr, *argv[128];
+    for (token = strtok_r(file_name, " ", &save_ptr); token != NULL;
+        token = strtok_r(NULL, " ", &save_ptr))
+    {
+      argv[argc] = token;
+      argc++;
     }
     //*
+
+    //! debugging print
+    int i;
+    for(i=0; i < argc; i++){
+      printf("argv[%d] = %s\n", i, argv[i]);
+    }
+    //! 
 
     success = load(argv[0], &if_.eip, &if_.esp);
     //* added
@@ -123,6 +146,7 @@ start_process(void* file_name_)
         argument_passing(argc, argv, &if_); /* you can do this in load()
                                                but, it's better to seperate */
     //*
+
 
     hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
@@ -152,6 +176,7 @@ start_process(void* file_name_)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
+    while(true); //! infinite loop for debugging
     return -1;
 }
 

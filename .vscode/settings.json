@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "stack": "c",
+        "syscall-nr.h": "c",
+        "cstdlib": "c",
+        "locale": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
+}
