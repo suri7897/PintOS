@@ -190,6 +190,13 @@ tid_t thread_create(const char *name, int priority,
   if (t == NULL)
     return TID_ERROR;
 
+  #ifdef USERPROG //! if User Thread, then initialize fdtable
+  int i;
+  for (i = 0; i < 64; i++) {
+    t->fdt[i] = NULL;
+  }
+  #endif //! added code
+
   /* Initialize thread. */
   init_thread(t, name, priority);
   tid = t->tid = allocate_tid();

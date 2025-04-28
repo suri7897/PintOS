@@ -5,6 +5,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include <filesys/filesys.h>
 
 static void syscall_handler (struct intr_frame *);
 
@@ -47,16 +48,44 @@ int write(int fd, void *buffer, unsigned size){
 }
 
 bool create(const char*file, unsigned initial_size){
-  return true;
-} //! not implemented yet
+  return filesys_create(file, initial_size);
+}
 
-int open(const char *file){
-  return 1;
-} //! not implemented yet
+int open(const char *file) {
+  if(file == NULL) { //! check file is NULL
+    return -1;
+  }
+  struct thread *cur = thread_current();
+  struct file *f = filesys_open(file);
+  if(f == NULL) { //! check file is NULL
+    return -1;
+  }
+  int i = 2; //! Note that 0, 1 is occupied with stdout, stdin.
+  while(cur->fdt[i] != NULL && i < 64){ //! search for empty fd table.
+    i++;
+  }
+  if(cur->fdt[i] == NULL){ //! if we found, then add to fdt.
+    cur->fdt[i] = f;
+    return i;
+  }
+  //! if fdtable is all full.
+  file_close(f);
+  return -1;
+}
 
 void close(int fd){
+  struct thread *cur = thread_current();
+  struct file *f;
+  f = cur->fdt[fd]; //! find file matching to file descriptor.
+
+  if(f == NULL) //! if not found, then return;
+    return;
+  
+  file_close(f); //! close the file
+  cur->fdt[fd] = NULL; //! release fd to NULL.
+
   return;
-} //! not implemented yet
+} 
 
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
@@ -76,13 +105,20 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_CREATE:
-      break; //! not implemented yet
+      is_valid_addr(f->esp+4);
+      is_valid_addr(f->esp+8);
+      f->eax = create((const char *)*(uint32_t *)(f->esp + 4), (unsigned)*(uint32_t *)(f->esp + 8));
+      break;
     
     case SYS_OPEN:
-      break; //! not implemented yet
+      is_valid_addr(f->esp+4);
+      f->eax = open((const char *)*(uint32_t *)(f->esp + 4));
+      break;
 
     case SYS_CLOSE:
-      break; //! not implemented yet
+      is_valid_addr(f->esp + 4);
+      close((int)*(uint32_t *)(f->esp + 4));
+      break;
 
     case SYS_WRITE: 
     //! ex) write(1, "hello", 5); 

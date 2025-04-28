@@ -4,7 +4,13 @@
         "__config": "c",
         "ostream": "c",
         "print": "c",
-        "*.inc": "c"
+        "*.inc": "c",
+        "filesys.h": "c",
+        "stdbool.h": "c",
+        "off_t.h": "c",
+        "vaddr.h": "c",
+        "syscall.h": "c",
+        "syscall-nr.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
