@@ -1,5 +1,10 @@
 {
     "files.associations": {
-        "thread.h": "c"
-    }
+        "thread.h": "c",
+        "__config": "c",
+        "ostream": "c",
+        "print": "c",
+        "*.inc": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }
