@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "devices/timer.h" //! for timer_msleep (debugging)
 
 static thread_func start_process NO_RETURN;
 static bool load(const char* cmdline, void (**eip)(void), void** esp);
@@ -63,7 +64,7 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
         memcpy(if_->esp, argv[i], arg_len); 
         
         arg_addr[i] = if_->esp; // keep track of where each argument string is placed on the stack
-        printf("%s is stacked.\n", argv[i]);
+        // printf("%s is stacked.\n", argv[i]);
     }
 
     // Align the stack pointer to 4-byte boundary (padding)
@@ -122,7 +123,7 @@ start_process(void* file_name_)
 
     //* added
     int argc = 0;
-    char *token, *save_ptr, *argv[128];
+    char *token, *save_ptr, *argv[512];
     for (token = strtok_r(file_name, " ", &save_ptr); token != NULL;
         token = strtok_r(NULL, " ", &save_ptr))
     {
@@ -131,12 +132,12 @@ start_process(void* file_name_)
     }
     //*
 
-    //! debugging print
-    int i;
-    for(i=0; i < argc; i++){
-      printf("argv[%d] = %s\n", i, argv[i]);
-    }
-    //! 
+    // //! debugging print
+    // int i;
+    // for(i=0; i < argc; i++){
+    //   printf("argv[%d] = %s\n", i, argv[i]);
+    // }
+    // //! 
 
     success = load(argv[0], &if_.eip, &if_.esp);
     //* added
@@ -148,7 +149,7 @@ start_process(void* file_name_)
     //*
 
 
-    hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+    // hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
@@ -174,9 +175,9 @@ start_process(void* file_name_)
 
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
-int process_wait(tid_t child_tid UNUSED) //! Need to implement!!!!
+int process_wait(tid_t child_tid UNUSED)
 {
-    while(true); //! infinite loop for debugging
+    timer_msleep (3000); //! for debugging
     return -1;
 }
 

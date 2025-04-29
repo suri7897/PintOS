@@ -48,12 +48,17 @@ int write(int fd, void *buffer, unsigned size){
 }
 
 bool create(const char*file, unsigned initial_size){
+  is_valid_addr((void *)file); //! check file's address is valid
+  if(file == NULL){ //! if file is NULL -> exit.
+    exit(-1);
+  }
   return filesys_create(file, initial_size);
 }
 
 int open(const char *file) {
+  is_valid_addr((void *)file); //! check file's address is valid
   if(file == NULL) { //! check file is NULL
-    return -1;
+    exit(-1);
   }
   struct thread *cur = thread_current();
   struct file *f = filesys_open(file);
@@ -76,11 +81,12 @@ int open(const char *file) {
 void close(int fd){
   struct thread *cur = thread_current();
   struct file *f;
+  if(fd < 0 || fd > 64){ //! prevent bad fd_value
+    exit(-1);
+  }
   f = cur->fdt[fd]; //! find file matching to file descriptor.
-
   if(f == NULL) //! if not found, then return;
-    return;
-  
+    exit(-1);
   file_close(f); //! close the file
   cur->fdt[fd] = NULL; //! release fd to NULL.
 

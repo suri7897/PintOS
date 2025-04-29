@@ -190,7 +190,7 @@ tid_t thread_create(const char *name, int priority,
   if (t == NULL)
     return TID_ERROR;
 
-  #ifdef USERPROG //! if User Thread, then initialize fdtable
+  #ifdef USERPROG //! (Project 2-1) if User Thread, then initialize fdtable
   int i;
   for (i = 0; i < 64; i++) {
     t->fdt[i] = NULL;
