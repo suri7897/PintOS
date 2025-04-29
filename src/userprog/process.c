@@ -1,4 +1,5 @@
 #include "userprog/process.h"
+#include "devices/timer.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -17,10 +18,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "devices/timer.h" //! for timer_msleep (debugging)
 
 static thread_func start_process NO_RETURN;
 static bool load(const char* cmdline, void (**eip)(void), void** esp);
+struct thread* get_child_with_pid(tid_t);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -42,12 +43,21 @@ tid_t process_execute(const char* file_name)
     char* process_name;
     char* save_ptr;
     process_name = strtok_r(file_name, " ", &save_ptr);
-    //! 
+    //!
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(process_name, PRI_DEFAULT, start_process, fn_copy);
     if (tid == TID_ERROR)
         palloc_free_page(fn_copy);
+    // else {
+    //     struct thread* child = get_child_with_pid(tid);
+    //     if (child != NULL) {
+    //         sema_init(&child->wait_sema, 0);
+    //         sema_init(&child->exit_sema, 0);
+    //         child->parent = thread_current();
+    //         list_push_back(&thread_current()->child_list, &child->child_elem);
+    //     }
+    // }
     return tid;
 }
 
@@ -61,8 +71,8 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
     for (i = argc - 1; i >= 0; i--) {
         int arg_len = strlen(argv[i]) + 1; //! add 1 for NULL
         if_->esp -= arg_len; //! change order
-        memcpy(if_->esp, argv[i], arg_len); 
-        
+        memcpy(if_->esp, argv[i], arg_len);
+
         arg_addr[i] = if_->esp; // keep track of where each argument string is placed on the stack
         // printf("%s is stacked.\n", argv[i]);
     }
@@ -70,39 +80,35 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
     // Align the stack pointer to 4-byte boundary (padding)
     uintptr_t raw_esp = (uintptr_t)if_->esp;
     uintptr_t aligned_esp = raw_esp & ~0x3;
-    if_->esp = (void*)aligned_esp; // round down to a multiple of 4
-    size_t padding = raw_esp - aligned_esp; // use size_t because it's unsigned,
-                                            // normally used when handling memory
-    memset((void*)aligned_esp, 0, padding); // initialise the padding space
-                                            // not necessary but security purpose
+
+    if (raw_esp != aligned_esp) {
+        size_t padding = raw_esp - aligned_esp;
+        if_->esp -= padding; // move esp
+        memset(if_->esp, 0, padding); // zero padding
+    }
 
     // Push argv[argc] = NULL to mark end of argument list
     if_->esp -= sizeof(char*); // 4 bytes //! change order
     memset(if_->esp, 0, sizeof(char*));
-    
 
     // Push pointers to each argument string (argv[0] ~ argv[argc-1])
     for (i = argc - 1; i >= 0; i--) {
-      if_->esp -= sizeof(char*); // 4 bytes //! change order
+        if_->esp -= sizeof(char*); // 4 bytes //! change order
         memcpy(if_->esp, &arg_addr[i], sizeof(char*));
-        
     }
 
     // Push argv (pointer to argv[0])
-    void *argv_start = if_->esp; //! start of argv[0]
+    void* argv_start = if_->esp; //! start of argv[0]
     if_->esp -= sizeof(char**); // 4 bytes // ! change order
     memcpy(if_->esp, &argv_start, sizeof(char**)); // 4 bytes
-
 
     // Push argc
     if_->esp -= sizeof(int); // 4 bytes //! change order
     memcpy(if_->esp, &argc, sizeof(int)); // 4 bytes
 
-
     // Push return address
     if_->esp -= sizeof(void*); // 4 bytes //! change order
     memset(if_->esp, 0, sizeof(void*)); // 4 bytes
-
 }
 //*
 
@@ -125,10 +131,9 @@ start_process(void* file_name_)
     int argc = 0;
     char *token, *save_ptr, *argv[512];
     for (token = strtok_r(file_name, " ", &save_ptr); token != NULL;
-        token = strtok_r(NULL, " ", &save_ptr))
-    {
-      argv[argc] = token;
-      argc++;
+        token = strtok_r(NULL, " ", &save_ptr)) {
+        argv[argc] = token;
+        argc++;
     }
     //*
 
@@ -137,17 +142,14 @@ start_process(void* file_name_)
     // for(i=0; i < argc; i++){
     //   printf("argv[%d] = %s\n", i, argv[i]);
     // }
-    // //! 
+    // //!
 
     success = load(argv[0], &if_.eip, &if_.esp);
     //* added
-    if (!success)
-        return -1;
-    else
+    if (success)
         argument_passing(argc, argv, &if_); /* you can do this in load()
                                                but, it's better to seperate */
     //*
-
 
     // hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
@@ -166,6 +168,22 @@ start_process(void* file_name_)
     NOT_REACHED();
 }
 
+//* return process with tid
+struct thread* get_child_with_pid(tid_t child_tid)
+{
+    struct thread* cur = thread_current();
+    struct list* child_list = &cur->child_list;
+
+    struct list_elem* e;
+    for (e = list_begin(child_list); e != list_end(child_list); e = list_next(e)) {
+        struct thread* t = list_entry(e, struct thread, child_elem);
+        if (t->tid == child_tid)
+            return t;
+    }
+
+    return NULL;
+}
+
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -175,9 +193,32 @@ start_process(void* file_name_)
 
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
-int process_wait(tid_t child_tid UNUSED)
+// int process_wait(tid_t child_tid UNUSED)
+// {
+//     struct thread* cur = thread_current();
+//     struct thread* child = get_child_with_pid(child_tid);
+
+//     if (child == NULL)
+//         return -1;
+
+//     if (child->is_waited)
+//         return -1;
+
+//     child->is_waited = true;
+
+//     sema_down(&child->wait_sema); // block parent
+
+//     int status = child->exit_status;
+
+//     list_remove(&child->child_elem);
+
+//     sema_up(&child->exit_sema);
+
+//     return status;
+// }
+int process_wait(tid_t child_tid)
 {
-    timer_msleep (3000); //! for debugging
+    timer_msleep(3000);
     return -1;
 }
 
@@ -186,6 +227,11 @@ void process_exit(void)
 {
     struct thread* cur = thread_current();
     uint32_t* pd;
+
+    if (cur->parent != NULL) {
+        sema_up(&cur->wait_sema);
+        sema_down(&cur->exit_sema);
+    }
 
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */

@@ -3,7 +3,8 @@
         "stack": "c",
         "syscall-nr.h": "c",
         "cstdlib": "c",
-        "locale": "c"
+        "locale": "c",
+        "timer.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
