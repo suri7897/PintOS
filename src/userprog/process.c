@@ -119,7 +119,7 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
 
     // Push return address
     if_->esp -= sizeof(void*); // 4 bytes //! change order
-    memset(if_->esp, 0, sizeof(void*)); // 4 bytes
+    memset(if_->esp, 0, sizeof(void*)); // 4 bytes. since it's newly created process, there's no return address → 0
 }
 //*
 
@@ -156,20 +156,15 @@ start_process(void* file_name_)
     // //!
 
     success = load(argv[0], &if_.eip, &if_.esp);
-    //* added
-    if (!success)
-        return -1;
-    else
-        argument_passing(argc, argv, &if_); /* you can do this in load()
-                                               but, it's better to seperate */
-    //*
-
-    // hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
     if (!success)
         thread_exit();
+    else
+        argument_passing(argc, argv, &if_); /* you can do this in load()
+                                               but, it's better to seperate */
+    // hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
     /* Start the user process by simulating a return from an
        interrupt, implemented by intr_exit (in
@@ -391,7 +386,7 @@ bool load(const char* file_name, void (**eip)(void), void** esp)
         }
     }
 
-    /* Set up stack. */
+    /* Set up user stack. */
     if (!setup_stack(esp))
         goto done;
 
