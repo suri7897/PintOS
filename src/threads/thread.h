@@ -98,7 +98,7 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     int exit_status; //! exit status for exit call.
-    struct file* fdt[64]; //! fd_table for thread
+    struct file* fdt[128]; //! fd_table for thread
 #endif
 
     /* Owned by thread.c. */

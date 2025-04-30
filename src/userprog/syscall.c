@@ -66,7 +66,7 @@ int open(const char *file) {
     return -1;
   }
   int i = 2; //! Note that 0, 1 is occupied with stdout, stdin.
-  while(cur->fdt[i] != NULL && i < 64){ //! search for empty fd table.
+  while(cur->fdt[i] != NULL && i < 128){ //! search for empty fd table.
     i++;
   }
   if(cur->fdt[i] == NULL){ //! if we found, then add to fdt.
@@ -81,7 +81,7 @@ int open(const char *file) {
 void close(int fd){
   struct thread *cur = thread_current();
   struct file *f;
-  if(fd < 0 || fd > 64){ //! prevent bad fd_value
+  if(fd < 0 || fd > 128){ //! prevent bad fd_value
     exit(-1);
   }
   f = cur->fdt[fd]; //! find file matching to file descriptor.
