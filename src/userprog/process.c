@@ -99,26 +99,26 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
                                             // not necessary but security purpose
 
     // Push argv[argc] = NULL to mark end of argument list
-    if_->esp -= sizeof(char*); // 4 bytes //! change order
+    if_->esp -= sizeof(char*); // 4 bytes
     memset(if_->esp, 0, sizeof(char*));
 
     // Push pointers to each argument string (argv[0] ~ argv[argc-1])
     for (i = argc - 1; i >= 0; i--) {
-        if_->esp -= sizeof(char*); // 4 bytes //! change order
+        if_->esp -= sizeof(char*); // 4 bytes
         memcpy(if_->esp, &arg_addr[i], sizeof(char*));
     }
 
     // Push argv (pointer to argv[0])
     void* argv_start = if_->esp; //! start of argv[0]
-    if_->esp -= sizeof(char**); // 4 bytes // ! change order
+    if_->esp -= sizeof(char**); // 4 bytes
     memcpy(if_->esp, &argv_start, sizeof(char**)); // 4 bytes
 
     // Push argc
-    if_->esp -= sizeof(int); // 4 bytes //! change order
+    if_->esp -= sizeof(int); // 4 bytes
     memcpy(if_->esp, &argc, sizeof(int)); // 4 bytes
 
     // Push return address
-    if_->esp -= sizeof(void*); // 4 bytes //! change order
+    if_->esp -= sizeof(void*); // 4 bytes
     memset(if_->esp, 0, sizeof(void*)); // 4 bytes. since it's newly created process, there's no return address → 0
 }
 //*
@@ -143,6 +143,8 @@ start_process(void* file_name_)
     char *token, *save_ptr, *argv[512];
     for (token = strtok_r(file_name, " ", &save_ptr); token != NULL;
         token = strtok_r(NULL, " ", &save_ptr)) {
+        if (token == " ")
+            continue;
         argv[argc] = token;
         argc++;
     }
@@ -156,14 +158,14 @@ start_process(void* file_name_)
     // //!
 
     success = load(argv[0], &if_.eip, &if_.esp);
-
     /* If load failed, quit. */
-    palloc_free_page(file_name);
     if (!success)
         thread_exit();
-    else
-        argument_passing(argc, argv, &if_); /* you can do this in load()
-                                               but, it's better to seperate */
+    argument_passing(argc, argv, &if_); /* you can do this in load()
+                                           but, it's better to seperate */
+
+    palloc_free_page(file_name);
+
     // hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
     /* Start the user process by simulating a return from an
