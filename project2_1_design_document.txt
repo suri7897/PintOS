@@ -64,9 +64,33 @@ more complex parsing than the kernel should manage.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+in /thread.h/..
+
+struct thread
+{
+...
+#ifdef USERPROG (this means below is executed if thread is user thread)
+    /* Owned by userprog/process.c. */
+    uint32_t *pagedir;                  /* Page directory. */
+    int exit_status;   // newly added  /  stores exit status for exit call.
+    struct file* fdt[128]; // newly added / thread stores fd_table for file I/O.
+#endif
+...
+}
+
+exit status is member of user_thread for saving exit_status.
+fdt[128] is fd_table for saving 128 file descriptors in user_thread.
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+
+In PintOS, file descriptors (FDs) are stored in the fd_table, which is a member of the user_thread structure.
+Each process (user thread) has its own fd_table, so file descriptors are unique within a process, not across the entire OS.
+When a file is opened, the system assigns the lowest available FD number in the table, so file descriptor maybe not unique.
+However, only standard input (stdin) and standard output (stdout) can have unique fd in PintOS,
+since by default, file descriptor 0 is reserved for stdin and file descriptor 1 for stdout.
+(Unlike in full UNIX systems, standard error (stderr, fd 2) is not predefined in PintOS.)
 
 ---- ALGORITHMS ----
 
@@ -82,6 +106,21 @@ more complex parsing than the kernel should manage.
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+
+For project 2-1, we implemented process_wait function as
+
+int process_wait(tid_t child_tid UNUSED)
+{
+    timer_msleep (3000); //! for debugging
+    return -1;
+}
+
+This function was used to artificially delay the parent process, allowing the child process enough time to execute and terminate.
+Without this delay, the parent process would return immediately, which may cause the child process to be terminated before it has a chance to run properly.
+
+However, this is not a correct implementation of process_wait, since it simply waits for a fixed duration regardless of whether the child has actually exited.
+Therefore, this placeholder implementation must be replaced in Project 2-2 with a proper mechanism that waits for a specific child process to exit and returns its exit status. 
+This is essential for the correct behavior of fork, exec, and related process control operations.
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -151,14 +190,14 @@ the quarter.
 
 +----------------------------+---------------------------------+
 
-|            Name            |          Contribution        |
+|            Name            |          Contribution           |
 
 +----------------------------+---------------------------------+
 
-| 김동욱                      | 50%, Implemented Priority Scheduling
+| 김동욱                      | 50%, Implemented draft of Argument Passing, debugging entire project.
 
 +----------------------------+---------------------------------+
 
-| 이강준                      | 50%, Implemented Alarm_clock
+| 이강준                      | 50%, Implemented draft of System_call, debugging entire project.
 
 +----------------------------+---------------------------------+
