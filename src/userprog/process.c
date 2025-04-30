@@ -1,4 +1,5 @@
 #include "userprog/process.h"
+#include "devices/timer.h" //! for timer_msleep (debugging)
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -17,7 +18,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "devices/timer.h" //! for timer_msleep (debugging)
 
 static thread_func start_process NO_RETURN;
 static bool load(const char* cmdline, void (**eip)(void), void** esp);
@@ -42,7 +42,7 @@ tid_t process_execute(const char* file_name)
     char* process_name;
     char* save_ptr;
     process_name = strtok_r(file_name, " ", &save_ptr);
-    //! 
+    //!
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(process_name, PRI_DEFAULT, start_process, fn_copy);
@@ -54,15 +54,37 @@ tid_t process_execute(const char* file_name)
 //* added
 void argument_passing(int argc, char** argv, struct intr_frame* if_)
 {
+    // === BEGIN STACK USAGE CHECK ===
+    size_t total_size = 0;
+
+    // Size for argument strings
+    int i;
+    for (i = 0; i < argc; i++) {
+        total_size += strlen(argv[i]) + 1; // +1 for null terminator
+    }
+
+    // Size for argv[i] pointers
+    total_size += (argc + 1) * sizeof(char*);
+
+    // Size for argv (char**), argc (int), and return address (void*)
+    total_size += sizeof(char**) + sizeof(int) + sizeof(void*);
+
+    // Worst-case padding for alignment
+    total_size += 4;
+
+    // Check if it exceeds 4KB stack page
+    if (total_size > PGSIZE) {
+        thread_exit(); // You could also return false if you want to handle it differently
+    }
+
     // Copy all argument strings onto the user stack in reverse order
     // and record their addresses for argv[i] pointers
     char* arg_addr[argc]; // store the addresses where each argument string is stored
-    int i;
     for (i = argc - 1; i >= 0; i--) {
         int arg_len = strlen(argv[i]) + 1; //! add 1 for NULL
         if_->esp -= arg_len; //! change order
-        memcpy(if_->esp, argv[i], arg_len); 
-        
+        memcpy(if_->esp, argv[i], arg_len);
+
         arg_addr[i] = if_->esp; // keep track of where each argument string is placed on the stack
         // printf("%s is stacked.\n", argv[i]);
     }
@@ -79,30 +101,25 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
     // Push argv[argc] = NULL to mark end of argument list
     if_->esp -= sizeof(char*); // 4 bytes //! change order
     memset(if_->esp, 0, sizeof(char*));
-    
 
     // Push pointers to each argument string (argv[0] ~ argv[argc-1])
     for (i = argc - 1; i >= 0; i--) {
-      if_->esp -= sizeof(char*); // 4 bytes //! change order
+        if_->esp -= sizeof(char*); // 4 bytes //! change order
         memcpy(if_->esp, &arg_addr[i], sizeof(char*));
-        
     }
 
     // Push argv (pointer to argv[0])
-    void *argv_start = if_->esp; //! start of argv[0]
+    void* argv_start = if_->esp; //! start of argv[0]
     if_->esp -= sizeof(char**); // 4 bytes // ! change order
     memcpy(if_->esp, &argv_start, sizeof(char**)); // 4 bytes
-
 
     // Push argc
     if_->esp -= sizeof(int); // 4 bytes //! change order
     memcpy(if_->esp, &argc, sizeof(int)); // 4 bytes
 
-
     // Push return address
     if_->esp -= sizeof(void*); // 4 bytes //! change order
     memset(if_->esp, 0, sizeof(void*)); // 4 bytes
-
 }
 //*
 
@@ -125,10 +142,9 @@ start_process(void* file_name_)
     int argc = 0;
     char *token, *save_ptr, *argv[512];
     for (token = strtok_r(file_name, " ", &save_ptr); token != NULL;
-        token = strtok_r(NULL, " ", &save_ptr))
-    {
-      argv[argc] = token;
-      argc++;
+        token = strtok_r(NULL, " ", &save_ptr)) {
+        argv[argc] = token;
+        argc++;
     }
     //*
 
@@ -137,7 +153,7 @@ start_process(void* file_name_)
     // for(i=0; i < argc; i++){
     //   printf("argv[%d] = %s\n", i, argv[i]);
     // }
-    // //! 
+    // //!
 
     success = load(argv[0], &if_.eip, &if_.esp);
     //* added
@@ -147,7 +163,6 @@ start_process(void* file_name_)
         argument_passing(argc, argv, &if_); /* you can do this in load()
                                                but, it's better to seperate */
     //*
-
 
     // hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
@@ -177,7 +192,7 @@ start_process(void* file_name_)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
-    timer_msleep (3000); //! for debugging
+    timer_msleep(3000); //! for debugging
     return -1;
 }
 

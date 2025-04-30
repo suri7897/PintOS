@@ -28,20 +28,32 @@
 >> A1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+Nothing for argument passing.
 
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
+I implemented argument parsing using strtok_r() to tokenize the command line. 
+After loading the executable, I pushed each argument onto the stack in reverse order, 
+saving the pointers in an array. I then pushed the pointers themselves to form argv[], 
+followed by argv, argc, and a fake return address (0). I ensured 16-byte alignment of 
+the stack before pushing argv by adjusting the stack pointer. To avoid stack overflow, 
+I checked the size of arguments and total memory used, returning an error if it exceeded one page.
 
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
+strtok_r() is thread-safe because it maintains parsing state in a user-supplied variable. 
+strtok() uses static storage, which is not safe in a multithreaded kernel like Pintos.
 
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+1. The kernel focus only on executing binaries, keeping it smaller and more secure
+2. The shell supports features like piping, redirection, and scripting, which require 
+more complex parsing than the kernel should manage.
 
                  SYSTEM CALLS
                  ============
