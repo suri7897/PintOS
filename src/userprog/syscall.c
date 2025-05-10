@@ -6,6 +6,8 @@
 #include <filesys/filesys.h>
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "filesys/file.h"
+#include "lib/user/syscall.h"
 
 static void syscall_handler(struct intr_frame*);
 
@@ -38,7 +40,7 @@ void is_valid_addr(void* addr)
     }
 }
 
-int write(int fd, void* buffer, unsigned size)
+int write(int fd, const void* buffer, unsigned size)
 {
     struct thread* cur = thread_current();
     if (fd == 1) { //! if fd == 1, then put text in buffer.
@@ -68,7 +70,7 @@ int open(const char* file)
         return -1;
     }
     int i = 2; //! Note that 0, 1 is occupied with stdout, stdin.
-    while (cur->fdt[i] != NULL && i < 64) { //! search for empty fd table.
+    while (cur->fdt[i] != NULL && i < 128) { //! search for empty fd table.
         i++;
     }
     if (cur->fdt[i] == NULL) { //! if we found, then add to fdt.
@@ -84,7 +86,7 @@ void close(int fd)
 {
     struct thread* cur = thread_current();
     struct file* f;
-    if (fd < 0 || fd > 64) { //! prevent bad fd_value
+    if (fd < 0 || fd > 128) { //! prevent bad fd_value
         exit(-1);
     }
     f = cur->fdt[fd]; //! find file matching to file descriptor.
@@ -94,6 +96,48 @@ void close(int fd)
     cur->fdt[fd] = NULL; //! release fd to NULL.
 
     return;
+}
+
+//! Project 2-2
+
+int read(int fd, void *buffer, unsigned size){ 
+  struct thread* cur = thread_current();
+  if (fd < 0 || fd > 128) { //! prevent bad fd_value
+    exit(-1); 
+  }
+  if (fd == 0){
+    
+  }
+  else if (fd >= 2){
+    return file_read(cur->fdt[fd], buffer, size);
+  }
+  return -1;
+}
+
+pid_t exec(const char *cmd_line){
+
+  return 0;
+}
+
+int wait (pid_t pid){
+
+  return 0;
+}
+
+bool remove (const char* file){
+  return filesys_remove(file);
+}
+
+int filesize (int fd){
+return file_length(thread_current()->fdt[fd]);
+}
+
+void seek (int fd, unsigned position){
+  file_seek(thread_current()->fdt[fd], position);
+}
+
+unsigned tell (int fd){
+  return file_tell(thread_current()->fdt[fd]);
 }
 
 static void
@@ -134,13 +178,45 @@ syscall_handler(struct intr_frame* f UNUSED)
         is_valid_addr(f->esp + 4); //! check fd is valid
         is_valid_addr(f->esp + 8); //! check buffer_pointer is valid
         is_valid_addr(f->esp + 12); //! check buffer_size is valid
-        f->eax = write((int)*(uint32_t*)(f->esp + 4), (void*)*(uint32_t*)(f->esp + 8), (unsigned)*((uint32_t*)(f->esp + 12))); //! store system call return value.
+        f->eax = write((int)*(uint32_t*)(f->esp + 4), (const void*)*(uint32_t*)(f->esp + 8), (unsigned)*((uint32_t*)(f->esp + 12))); //! store system call return value.
         break;
 
-    default:
-        printf("system call!\n");
-        thread_exit();
+    case SYS_READ :
+        is_valid_addr(f->esp + 4); 
+        is_valid_addr(f->esp + 8); 
+        is_valid_addr(f->esp + 12); 
+        f->eax = read((int)*(uint32_t*)(f->esp + 4), (void*)*(uint32_t*)(f->esp + 8), (unsigned)*((uint32_t*)(f->esp + 12)));
+        break;
+
+    case SYS_EXEC :
+        is_valid_addr(f->esp + 4);
+        f->eax = exec((const char*)*(uint32_t *)(f->esp + 4));
+        break;
+
+    case SYS_WAIT :
+        is_valid_addr(f->esp + 4);
+        f->eax = wait((pid_t)*(uint32_t *)(f->esp + 4));
+        break;
+
+    case SYS_REMOVE :
+        is_valid_addr(f->esp + 4);
+        f->eax = remove((const char*)*(uint32_t *)(f->esp + 4));
+        break;
+
+    case SYS_FILESIZE :
+        is_valid_addr(f->esp + 4);
+        f->eax= filesize((int)*(uint32_t*)(f->esp + 4));
+        break;
+
+    case SYS_SEEK :
+        is_valid_addr(f->esp + 4);
+        is_valid_addr(f->esp + 8);
+        seek((int)*(uint32_t*)(f->esp + 4), (unsigned)*(uint32_t *)(f->esp + 8));
+        break;
+
+    case SYS_TELL:
+        is_valid_addr(f->esp + 4);
+        f->eax = tell((int)*(uint32_t *)(f->esp + 4));
+        break;
     }
 }
-
-//! added
