@@ -8,6 +8,7 @@
 #include <syscall-nr.h>
 #include "filesys/file.h"
 #include "lib/user/syscall.h"
+#include "process.h"
 
 static void syscall_handler(struct intr_frame*);
 
@@ -42,11 +43,25 @@ void is_valid_addr(void* addr)
 
 int write(int fd, const void* buffer, unsigned size)
 {
+    is_valid_addr(buffer);
     struct thread* cur = thread_current();
-    if (fd == 1) { //! if fd == 1, then put text in buffer.
-        putbuf(buffer, size);
+    if (fd < 0 || fd > 128) { //! prevent bad fd_value
+      exit(-1); 
     }
-    return -1;
+    if (fd == 0){
+      exit(-1);
+    }
+    else if (fd == 1) { //! if fd == 1, then put text in buffer.
+      putbuf(buffer, size);
+    }
+    //! project 2-2
+    else{
+      struct file* f = cur->fdt[fd];
+      if(f==NULL){
+        exit(-1);
+      }
+      return file_write(f, buffer, size);
+    }
 }
 
 bool create(const char* file, unsigned initial_size)
@@ -100,28 +115,34 @@ void close(int fd)
 
 //! Project 2-2
 
-int read(int fd, void *buffer, unsigned size){ 
+int read(int fd, void *buffer, unsigned size){
+  is_valid_addr(buffer); //! check buffer is valid
   struct thread* cur = thread_current();
   if (fd < 0 || fd > 128) { //! prevent bad fd_value
     exit(-1); 
   }
-  if (fd == 0){
-    
+  if (fd == 0){ //! not implemented yet
+    // int i;
+    // for (i = 0; i < size; i++){
+    //   buffer[i] = input_getc();
+    // }
   }
   else if (fd >= 2){
+    struct file *f = cur->fdt[fd];
+    if(f == NULL){
+      exit(-1);
+    }
     return file_read(cur->fdt[fd], buffer, size);
   }
   return -1;
 }
 
 pid_t exec(const char *cmd_line){
-
-  return 0;
+  return process_execute(cmd_line);
 }
 
 int wait (pid_t pid){
-
-  return 0;
+  return process_wait(pid);
 }
 
 bool remove (const char* file){
