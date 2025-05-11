@@ -74,7 +74,7 @@ void argument_passing(int argc, char** argv, struct intr_frame* if_)
 
     // Check if it exceeds 4KB stack page
     if (total_size > PGSIZE) {
-        thread_exit(); // You could also return false if you want to handle it differently
+        thread_exit();
     }
 
     // Copy all argument strings onto the user stack in reverse order
@@ -166,7 +166,7 @@ start_process(void* file_name_)
 
     palloc_free_page(file_name);
 
-    // hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+    hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
     /* Start the user process by simulating a return from an
        interrupt, implemented by intr_exit (in
