@@ -127,14 +127,15 @@ int read(int fd, void *buffer, unsigned size){
       *(uint8_t*)(buffer+i) = input_getc();
     }
   }
-  else if (fd >= 2){
+  else if (fd == 1)
+    return -1;
+  else{
     struct file *f = cur->fdt[fd];
     if(f == NULL){
       exit(-1);
     }
     return file_read(cur->fdt[fd], buffer, size);
   }
-  return -1;
 }
 
 pid_t exec(const char *cmd_line){
