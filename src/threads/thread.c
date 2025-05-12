@@ -188,16 +188,14 @@ tid_t thread_create(const char* name, int priority,
     if (t == NULL)
         return TID_ERROR;
 
-#ifdef USERPROG //! (Project 2-1) if User Thread, then initialize fdtable
-    int i;
-    for (i = 0; i < 64; i++) {
-        t->fdt[i] = NULL;
-    }
-#endif //! added code
-
     /* Initialize thread. */
     init_thread(t, name, priority);
     tid = t->tid = allocate_tid();
+
+//* added
+#ifdef USERPROG
+    list_push_back(&thread_current()->child_list, &t->child_elem);
+#endif
 
     /* Prepare thread for first run by initializing its stack.
        Do this atomically so intermediate values for the 'stack'
@@ -530,7 +528,10 @@ init_thread(struct thread* t, const char* name, int priority)
     t->magic = THREAD_MAGIC;
 
 #ifdef USERPROG
+    list_init(&t->child_list);
     t->is_waited = false;
+    sema_init(&t->wait_sema, 0);
+    sema_init(&t->exit_sema, 0);
 #endif
 
     list_push_back(&all_list, &t->allelem);

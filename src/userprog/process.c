@@ -32,7 +32,8 @@ tid_t process_execute(const char* file_name)
     tid_t tid;
 
     /* Make a copy of FILE_NAME.
-       Otherwise there's a race between the caller and load(). */
+       Otherwise there's a race between the caller and load().
+       And also we are parsing it. We can't parse if it's const type */
     fn_copy = palloc_get_page(0);
     if (fn_copy == NULL)
         return TID_ERROR;
@@ -178,6 +179,20 @@ start_process(void* file_name_)
     NOT_REACHED();
 }
 
+//* added
+struct thread* get_child(tid_t child_tid)
+{
+    struct thread* cur = thread_current();
+    struct list* child_list = &cur->child_list;
+    struct list_elem* e;
+    for (e = list_begin(child_list); e != list_end(child_list); e = list_next(e)) {
+        struct thread* t = list_entry(e, struct thread, child_elem);
+        if (t->tid == child_tid)
+            return t;
+    }
+
+    return NULL;
+}
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -189,8 +204,20 @@ start_process(void* file_name_)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
-    timer_msleep(3000); //! for debugging
-    return -1;
+    // timer_msleep(3000); //! for debugging
+
+    struct thread* child = get_child(child_tid);
+    if (child == NULL || child->is_waited) // no child exists or a process is already waiting the child
+        return -1;
+
+    child->is_waited = true;
+
+    sema_down(&child->wait_sema); // wait for the child to finish execution
+    int status = child->exit_status;
+    list_remove(&child->child_elem); // removes it from the parent's child list
+    sema_up(&child->exit_sema); // ensures the parent finishes using child->exit_status before it frees
+
+    return status;
 }
 
 /* Free the current process's resources. */
@@ -214,6 +241,11 @@ void process_exit(void)
         pagedir_activate(NULL);
         pagedir_destroy(pd);
     }
+
+    //* added
+    sema_up(&cur->wait_sema); // send a signal to parent waiting for the child to be terminated
+    if (cur->is_waited)
+        sema_down(&cur->exit_sema); // wait until pareant accesses status
 }
 
 /* Sets up the CPU for running user code in the current
