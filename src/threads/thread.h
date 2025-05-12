@@ -104,6 +104,9 @@ struct thread {
     struct semaphore wait_sema;
     struct semaphore exit_sema;
     bool is_waited;
+
+    bool load_success; //! load success
+    struct semaphore load_sema; //! sema for load success
 #endif
 
     /* Owned by thread.c. */

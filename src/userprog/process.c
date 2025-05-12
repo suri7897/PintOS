@@ -21,6 +21,7 @@
 
 static thread_func start_process NO_RETURN;
 static bool load(const char* cmdline, void (**eip)(void), void** esp);
+struct thread* get_child(tid_t child_tid);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -47,8 +48,20 @@ tid_t process_execute(const char* file_name)
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(process_name, PRI_DEFAULT, start_process, fn_copy);
-    if (tid == TID_ERROR)
+    if (tid == TID_ERROR){
         palloc_free_page(fn_copy);
+        return TID_ERROR;
+    }
+    //! added for checking load_success
+    struct thread *child = get_child(tid);
+    if (child == NULL)
+        return TID_ERROR;
+    
+    sema_down(&child->load_sema);
+
+    if(!child -> load_success)
+        return TID_ERROR;
+    
     return tid;
 }
 
@@ -159,6 +172,10 @@ start_process(void* file_name_)
     // //!
 
     success = load(argv[0], &if_.eip, &if_.esp);
+    //! added for load check
+    thread_current()->load_success = success;
+    sema_up(&thread_current()->load_sema);
+    //!
     /* If load failed, quit. */
     if (!success)
         thread_exit();

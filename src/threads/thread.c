@@ -532,6 +532,7 @@ init_thread(struct thread* t, const char* name, int priority)
     t->is_waited = false;
     sema_init(&t->wait_sema, 0);
     sema_init(&t->exit_sema, 0);
+    sema_init(&t->load_sema, 0);
 #endif
 
     list_push_back(&all_list, &t->allelem);

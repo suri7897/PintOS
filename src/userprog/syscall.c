@@ -121,11 +121,11 @@ int read(int fd, void *buffer, unsigned size){
   if (fd < 0 || fd > 128) { //! prevent bad fd_value
     exit(-1); 
   }
-  if (fd == 0){ //! not implemented yet
-    // int i;
-    // for (i = 0; i < size; i++){
-    //   buffer[i] = input_getc();
-    // }
+  if (fd == 0){
+    int i;
+    for (i = 0; i < size; i++){
+      *(uint8_t*)(buffer+i) = input_getc();
+    }
   }
   else if (fd >= 2){
     struct file *f = cur->fdt[fd];
@@ -138,7 +138,17 @@ int read(int fd, void *buffer, unsigned size){
 }
 
 pid_t exec(const char *cmd_line){
-  return process_execute(cmd_line);
+    is_valid_addr(cmd_line);
+    char *fn_copy = palloc_get_page(0); 
+
+    if (fn_copy == NULL) 
+        return TID_ERROR; 
+    
+    strlcpy(fn_copy, cmd_line, PGSIZE);
+    pid_t pid = process_execute(fn_copy);
+    palloc_free_page(fn_copy);
+    
+    return pid;
 }
 
 int wait (pid_t pid){
@@ -241,3 +251,17 @@ syscall_handler(struct intr_frame* f UNUSED)
         break;
     }
 }
+
+    // SYS_HALT,                   /* Halt the operating system. */
+    // SYS_EXIT,                   /* Terminate this process. */
+    // SYS_EXEC,                   /* Start another process. */
+    // SYS_WAIT,                   /* Wait for a child process to die. */
+    // SYS_CREATE,                 /* Create a file. */
+    // SYS_REMOVE,                 /* Delete a file. */
+    // SYS_OPEN,                   /* Open a file. */
+    // SYS_FILESIZE,               /* Obtain a file's size. */
+    // SYS_READ,                   /* Read from a file. */
+    // SYS_WRITE,                  /* Write to a file. */
+    // SYS_SEEK,                   /* Change position in a file. */
+    // SYS_TELL,                   /* Report current position in a file. */
+    // SYS_CLOSE,                  /* Close a file. */
