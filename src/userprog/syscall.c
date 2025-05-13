@@ -47,7 +47,7 @@ int write(int fd, const void* buffer, unsigned size)
 {
     is_valid_addr(buffer);
     struct thread* cur = thread_current();
-    if (fd < 0 || fd > 128) { //! prevent bad fd_value
+    if (fd < 0 || fd > 64) { //! prevent bad fd_value
       exit(-1); 
     }
     lock_acquire(&file_lock); 
@@ -79,7 +79,10 @@ bool create(const char* file, unsigned initial_size)
     if (file == NULL) { //! if file is NULL -> exit.
         exit(-1);
     }
-    return filesys_create(file, initial_size);
+    lock_acquire(&file_lock); 
+    bool result = filesys_create(file, initial_size);
+    lock_release(&file_lock); 
+    return result;
 }
 
 int open(const char* file)
@@ -96,7 +99,7 @@ int open(const char* file)
         return -1;
     }
     int i = 2; //! Note that 0, 1 is occupied with stdout, stdin.
-    while (cur->fdt[i] != NULL && i < 128) { //! search for empty fd table.
+    while (cur->fdt[i] != NULL && i < 64) { //! search for empty fd table.
         i++;
     }
     if (cur->fdt[i] == NULL) { //! if we found, then add to fdt.
@@ -114,14 +117,18 @@ void close(int fd)
 {
     struct thread* cur = thread_current();
     struct file* f;
-    if (fd < 0 || fd > 128) { //! prevent bad fd_value
+    if (fd < 0 || fd > 64) { //! prevent bad fd_value
         exit(-1);
     }
+    lock_acquire(&file_lock); 
     f = cur->fdt[fd]; //! find file matching to file descriptor.
-    if (f == NULL) //! if not found, then return;
+    if (f == NULL){ //! if not found, then return;
+        lock_release(&file_lock); 
         exit(-1);
+    }
     file_close(f); //! close the file
     cur->fdt[fd] = NULL; //! release fd to NULL.
+    lock_release(&file_lock); 
 
     return;
 }
@@ -131,7 +138,7 @@ void close(int fd)
 int read(int fd, void *buffer, unsigned size){
   is_valid_addr(buffer); //! check buffer is valid
   struct thread* cur = thread_current();
-  if (fd < 0 || fd > 128) { //! prevent bad fd_value
+  if (fd < 0 || fd > 64) { //! prevent bad fd_value
     exit(-1); 
   }
   int result;
@@ -164,7 +171,7 @@ pid_t exec(const char *cmd_line){
     
     strlcpy(fn_copy, cmd_line, PGSIZE);
     pid_t pid = process_execute(fn_copy);
-    // palloc_free_page(fn_copy);
+    palloc_free_page(fn_copy);
     
     return pid;
 }
@@ -174,7 +181,10 @@ int wait (pid_t pid){
 }
 
 bool remove (const char* file){
-  return filesys_remove(file);
+  lock_acquire(&file_lock);   
+  bool result = filesys_remove(file);
+  lock_release(&file_lock); 
+  return result;
 }
 
 int filesize (int fd){

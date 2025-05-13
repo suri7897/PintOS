@@ -107,6 +107,8 @@ struct thread {
 
     bool load_success; //! load success
     struct semaphore load_sema; //! sema for load success
+
+    struct file* running_file; //! current running_file for denial of writing.
 #endif
 
     /* Owned by thread.c. */

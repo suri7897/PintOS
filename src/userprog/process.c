@@ -17,6 +17,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "userprog/syscall.h"
+
+extern struct lock file_lock; //! global lock for file_sys
 
 static thread_func start_process NO_RETURN;
 static bool load(const char* cmdline, void (**eip)(void), void** esp);
@@ -51,7 +54,7 @@ tid_t process_execute(const char* file_name)
         palloc_free_page(fn_copy);
         return TID_ERROR;
     }
-    //! added for checking load_success
+    //! added for checking load_success (project2-2)
     struct thread* child = get_child(tid);
     if (child == NULL)
         return TID_ERROR;
@@ -62,6 +65,7 @@ tid_t process_execute(const char* file_name)
         return TID_ERROR;
 
     return tid;
+    //!
 }
 
 //* added
@@ -171,7 +175,7 @@ start_process(void* file_name_)
     // //!
 
     success = load(argv[0], &if_.eip, &if_.esp);
-    //! added for load check
+    //! added for load check (project2-2)
     thread_current()->load_success = success;
     sema_up(&thread_current()->load_sema);
     //!
@@ -239,6 +243,26 @@ void process_exit(void)
 {
     struct thread* cur = thread_current();
     uint32_t* pd;
+    
+    //! close all files (project2-2)
+    lock_acquire(&file_lock); 
+    int i;
+    if(cur->running_file != NULL)
+        file_close(cur->running_file); //! need to close running_file. 
+        //! file close has file_allow_write, so need to be called.
+
+    for (i = 2; i < 64; i++) {
+        if (cur->fdt[i] != NULL) {
+            if(cur->fdt[i] != cur->running_file){ //! exception for double close.
+                file_close(cur->fdt[i]);
+                cur->fdt[i] = NULL;
+            }
+            else
+                continue;
+        }
+    }
+    lock_release(&file_lock); 
+    //! 
 
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */
@@ -370,6 +394,13 @@ bool load(const char* file_name, void (**eip)(void), void** esp)
         goto done;
     }
 
+    //! Deny write on running_file;
+    lock_acquire(&file_lock); 
+    t->running_file = file;
+    file_deny_write(file);
+    lock_release(&file_lock); 
+    //!
+
     /* Read and verify executable header. */
     if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr
         || memcmp(ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -445,7 +476,7 @@ bool load(const char* file_name, void (**eip)(void), void** esp)
 
 done:
     /* We arrive here whether the load is successful or not. */
-    file_close(file);
+    // file_close(file); //! close is done in process_exit
     return success;
 }
 
