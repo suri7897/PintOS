@@ -1,5 +1,4 @@
 #include "userprog/process.h"
-#include "devices/timer.h" //! for timer_msleep (debugging)
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -48,20 +47,20 @@ tid_t process_execute(const char* file_name)
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(process_name, PRI_DEFAULT, start_process, fn_copy);
-    if (tid == TID_ERROR){
+    if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
         return TID_ERROR;
     }
     //! added for checking load_success
-    struct thread *child = get_child(tid);
+    struct thread* child = get_child(tid);
     if (child == NULL)
         return TID_ERROR;
-    
+
     sema_down(&child->load_sema);
 
-    if(!child -> load_success)
+    if (!child->load_success)
         return TID_ERROR;
-    
+
     return tid;
 }
 
@@ -221,8 +220,6 @@ struct thread* get_child(tid_t child_tid)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
-    // timer_msleep(3000); //! for debugging
-
     struct thread* child = get_child(child_tid);
     if (child == NULL || child->is_waited) // no child exists or a process is already waiting the child
         return -1;
