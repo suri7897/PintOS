@@ -11,9 +11,11 @@
 #include "process.h"
 
 static void syscall_handler(struct intr_frame*);
+struct lock file_lock; //! define lock
 
 void syscall_init(void)
 {
+    lock_init(&file_lock); //! activate lock
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -48,19 +50,26 @@ int write(int fd, const void* buffer, unsigned size)
     if (fd < 0 || fd > 128) { //! prevent bad fd_value
       exit(-1); 
     }
+    lock_acquire(&file_lock); 
     if (fd == 0){
+      lock_release(&file_lock);     
       exit(-1);
     }
     else if (fd == 1) { //! if fd == 1, then put text in buffer.
       putbuf(buffer, size);
+      lock_release(&file_lock);
+      return size;
     }
     //! project 2-2
     else{
       struct file* f = cur->fdt[fd];
       if(f==NULL){
+        lock_release(&file_lock);
         exit(-1);
       }
-      return file_write(f, buffer, size);
+      int result = file_write(f, buffer, size);
+      lock_release(&file_lock);
+      return result;
     }
 }
 
@@ -79,9 +88,11 @@ int open(const char* file)
     if (file == NULL) { //! check file is NULL
         exit(-1);
     }
+    lock_acquire(&file_lock); //! lock the file_sys
     struct thread* cur = thread_current();
     struct file* f = filesys_open(file);
     if (f == NULL) { //! check file is NULL
+        lock_release(&file_lock); //! nothing should be done, so release
         return -1;
     }
     int i = 2; //! Note that 0, 1 is occupied with stdout, stdin.
@@ -90,10 +101,12 @@ int open(const char* file)
     }
     if (cur->fdt[i] == NULL) { //! if we found, then add to fdt.
         cur->fdt[i] = f;
+        lock_release(&file_lock); //! nothing should be done, so release
         return i;
     }
     //! if fdtable is all full.
     file_close(f);
+    lock_release(&file_lock); //! nothing should be done, so release
     return -1;
 }
 
@@ -121,21 +134,25 @@ int read(int fd, void *buffer, unsigned size){
   if (fd < 0 || fd > 128) { //! prevent bad fd_value
     exit(-1); 
   }
+  int result;
+  lock_acquire(&file_lock);
   if (fd == 0){
-    int i;
-    for (i = 0; i < size; i++){
-      *(uint8_t*)(buffer+i) = input_getc();
+    for (result = 0; result < size; result++){
+      *(uint8_t*)(buffer+result) = input_getc();
     }
   }
   else if (fd == 1)
-    return -1;
+    result = -1;
   else{
     struct file *f = cur->fdt[fd];
     if(f == NULL){
+      lock_release(&file_lock); //! nothing should be done, so release  
       exit(-1);
     }
-    return file_read(cur->fdt[fd], buffer, size);
+    result = file_read(cur->fdt[fd], buffer, size);
   }
+  lock_release(&file_lock); //! nothing should be done, so release
+  return result;
 }
 
 pid_t exec(const char *cmd_line){
@@ -147,7 +164,7 @@ pid_t exec(const char *cmd_line){
     
     strlcpy(fn_copy, cmd_line, PGSIZE);
     pid_t pid = process_execute(fn_copy);
-    palloc_free_page(fn_copy);
+    // palloc_free_page(fn_copy);
     
     return pid;
 }
