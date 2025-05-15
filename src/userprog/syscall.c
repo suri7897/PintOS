@@ -143,6 +143,7 @@ int read(int fd, void* buffer, unsigned size)
     if (fd < 0 || fd >= 64) { //! prevent bad fd_value
         exit(-1);
     }
+
     int result;
     lock_acquire(&file_lock);
     if (fd == 0) {
@@ -166,15 +167,28 @@ int read(int fd, void* buffer, unsigned size)
 pid_t exec(const char* cmd_line)
 {
     is_valid_addr(cmd_line);
-    // because cmd_line is in user stack, we need to copy it
-    char* fn_copy = palloc_get_page(0);
+    if (cmd_line == NULL)
+        exit(-1);
 
+    // Make a copy of cmd_line since it's in user memory
+    char* fn_copy = palloc_get_page(0);
     if (fn_copy == NULL)
-        return TID_ERROR;
+        exit(-1);
 
     strlcpy(fn_copy, cmd_line, PGSIZE);
+
+    // Execute the process and get the child TID
     pid_t pid = process_execute(fn_copy);
+
+    // Free the copy regardless of execution success
     palloc_free_page(fn_copy);
+
+    // If process creation failed, return -1
+    if (pid == TID_ERROR)
+        return -1;
+
+    // process_execute already waits for the child to load
+    // with sema_down(&child->load_sema) and returns error if loading fails
 
     return pid;
 }

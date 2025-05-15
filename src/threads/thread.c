@@ -364,26 +364,24 @@ void thread_sleep(int64_t ticks)
 void thread_wakeup(int64_t ticks)
 {
     //! thread_foreach 함수를 참고하여 작성
-    struct list_elem* e;
+    struct list_elem* e = list_begin(&sleep_list);
 
     /*
     ! 모든 sleep_list 안에 있는 thread에 대해서 현재 tick과 wakeup tick을 비교 ->
     ! 만약에 작으면 바로 unblock 진행.
     */
 
-    for (e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)) {
+    while (e != list_end(&sleep_list)) {
         struct thread* t = list_entry(e, struct thread, elem);
-        if (t->wake_tick > ticks) {
-            return;
-            /*
-            ! 만약 sleep_list가 wake_tick에 대해 오름차순으로 정렬되어 있다면,
-            ! 앞에 있는 element의 wake_tick이 현재 tick보다 높으면 다른 thread들을 확인 안해도 됨.
-            */
-        } else {
-            e = list_remove(e);
-            e = list_prev(e); // ! for에서 리스트가 자동으로 갱신되므로 remove를 하고 다시 전으로 돌아와야함.
-            thread_unblock(t);
-        }
+        if (t->wake_tick > ticks)
+            break;
+
+        struct list_elem* next = list_next(e);
+
+        list_remove(e);
+        thread_unblock(t);
+
+        e = next;
     }
 }
 

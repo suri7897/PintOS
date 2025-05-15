@@ -10,6 +10,7 @@
 #include "threads/vaddr.h"
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
+#include "userprog/syscall.h"
 #include "userprog/tss.h"
 #include <debug.h>
 #include <inttypes.h>
@@ -17,7 +18,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "userprog/syscall.h"
 
 extern struct lock file_lock; //! global lock for file_sys
 
@@ -46,18 +46,24 @@ tid_t process_execute(const char* file_name)
     char* process_name;
     char* save_ptr;
     process_name = strtok_r(file_name, " ", &save_ptr);
+    if (process_name == NULL) {
+        palloc_free_page(fn_copy);
+        return TID_ERROR;
+    }
     //!
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(process_name, PRI_DEFAULT, start_process, fn_copy);
     if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
-        return TID_ERROR;
+        return -1;
     }
     //! added for checking load_success (project2-2)
     struct thread* child = get_child(tid);
-    if (child == NULL)
+    if (child == NULL) {
+        palloc_free_page(fn_copy);
         return TID_ERROR;
+    }
 
     sema_down(&child->load_sema);
 
@@ -160,8 +166,6 @@ start_process(void* file_name_)
     char *token, *save_ptr, *argv[512];
     for (token = strtok_r(file_name, " ", &save_ptr); token != NULL;
         token = strtok_r(NULL, " ", &save_ptr)) {
-        if (token == " ")
-            continue;
         argv[argc] = token;
         argc++;
     }
@@ -180,8 +184,10 @@ start_process(void* file_name_)
     sema_up(&thread_current()->load_sema);
     //!
     /* If load failed, quit. */
-    if (!success)
+    if (!success) {
         thread_exit();
+    }
+
     argument_passing(argc, argv, &if_); /* you can do this in load()
                                            but, it's better to seperate */
 
@@ -205,6 +211,7 @@ struct thread* get_child(tid_t child_tid)
     struct thread* cur = thread_current();
     struct list* child_list = &cur->child_list;
     struct list_elem* e;
+
     for (e = list_begin(child_list); e != list_end(child_list); e = list_next(e)) {
         struct thread* t = list_entry(e, struct thread, child_elem);
         if (t->tid == child_tid)
@@ -232,7 +239,9 @@ int process_wait(tid_t child_tid UNUSED)
 
     sema_down(&child->wait_sema); // wait for the child to finish execution
     int status = child->exit_status;
-    list_remove(&child->child_elem); // removes it from the parent's child list
+    if (!list_empty(&thread_current()->child_list)) {
+        list_remove(&child->child_elem); // removes it from the parent's child list
+    }
     sema_up(&child->exit_sema); // ensures the parent finishes using child->exit_status before it frees
 
     return status;
@@ -243,26 +252,24 @@ void process_exit(void)
 {
     struct thread* cur = thread_current();
     uint32_t* pd;
-    
+
     //! close all files (project2-2)
-    lock_acquire(&file_lock); 
+    lock_acquire(&file_lock);
     int i;
-    if(cur->running_file != NULL)
-        file_close(cur->running_file); //! need to close running_file. 
-        //! file close has file_allow_write, so need to be called.
+    if (cur->running_file != NULL)
+        file_close(cur->running_file); //! need to close running_file.
+    //! file close has file_allow_write, so need to be called.
 
     for (i = 2; i < 64; i++) {
         if (cur->fdt[i] != NULL) {
-            if(cur->fdt[i] != cur->running_file){ //! exception for double close.
+            if (cur->fdt[i] != cur->running_file) { //! exception for double close.
                 file_close(cur->fdt[i]);
                 cur->fdt[i] = NULL;
             }
-            else
-                continue;
         }
     }
-    lock_release(&file_lock); 
-    //! 
+    lock_release(&file_lock);
+    //!
 
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */
@@ -395,10 +402,10 @@ bool load(const char* file_name, void (**eip)(void), void** esp)
     }
 
     //! Deny write on running_file;
-    lock_acquire(&file_lock); 
+    lock_acquire(&file_lock);
     t->running_file = file;
     file_deny_write(file);
-    lock_release(&file_lock); 
+    lock_release(&file_lock);
     //!
 
     /* Read and verify executable header. */
