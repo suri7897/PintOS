@@ -171,24 +171,17 @@ pid_t exec(const char* cmd_line)
         exit(-1);
 
     // Make a copy of cmd_line since it's in user memory
-    char* fn_copy = palloc_get_page(0);
-    if (fn_copy == NULL)
+    char* cmd_copy = palloc_get_page(0);
+    if (cmd_copy == NULL)
         exit(-1);
 
-    strlcpy(fn_copy, cmd_line, PGSIZE);
+    strlcpy(cmd_copy, cmd_line, PGSIZE);
 
     // Execute the process and get the child TID
-    pid_t pid = process_execute(fn_copy);
+    pid_t pid = process_execute(cmd_copy);
 
     // Free the copy regardless of execution success
-    palloc_free_page(fn_copy);
-
-    // If process creation failed, return -1
-    if (pid == TID_ERROR)
-        return -1;
-
-    // process_execute already waits for the child to load
-    // with sema_down(&child->load_sema) and returns error if loading fails
+    palloc_free_page(cmd_copy);
 
     return pid;
 }

@@ -527,10 +527,12 @@ init_thread(struct thread* t, const char* name, int priority)
 
 #ifdef USERPROG
     list_init(&t->child_list);
-    t->is_waited = false;
+    sema_init(&t->load_sema, 0);
     sema_init(&t->wait_sema, 0);
     sema_init(&t->exit_sema, 0);
-    sema_init(&t->load_sema, 0);
+    t->load_success = false;
+    t->is_waited = false;
+    t->exit_status = -1;
 #endif
 
     list_push_back(&all_list, &t->allelem);
