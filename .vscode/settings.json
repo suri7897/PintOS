@@ -4,7 +4,8 @@
         "syscall-nr.h": "c",
         "cstdlib": "c",
         "locale": "c",
-        "timer.h": "c"
+        "timer.h": "c",
+        "string": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

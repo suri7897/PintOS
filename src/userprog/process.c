@@ -212,6 +212,9 @@ struct thread* get_child(tid_t child_tid)
     struct list* child_list = &cur->child_list;
     struct list_elem* e;
 
+    if (list_empty(child_list))
+        return NULL;
+
     for (e = list_begin(child_list); e != list_end(child_list); e = list_next(e)) {
         struct thread* t = list_entry(e, struct thread, child_elem);
         if (t->tid == child_tid)
@@ -288,9 +291,8 @@ void process_exit(void)
     }
 
     //* added
-    sema_up(&cur->wait_sema); // send a signal to parent waiting for the child to be terminated
-    if (cur->is_waited)
-        sema_down(&cur->exit_sema); // wait until pareant accesses status
+    sema_up(&cur->wait_sema); // send a signal to the parent waiting for the child to be terminated
+    sema_down(&cur->exit_sema); // wait until pareant accesses status
 }
 
 /* Sets up the CPU for running user code in the current

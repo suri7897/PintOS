@@ -1,6 +1,7 @@
 #include "userprog/exception.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "userprog/gdt.h"
 #include "userprog/syscall.h"
 #include <inttypes.h>
@@ -146,9 +147,10 @@ page_fault(struct intr_frame* f)
     write = (f->error_code & PF_W) != 0;
     user = (f->error_code & PF_U) != 0;
 
-    if (user)
-        exit(-1);
-    else {
+    if (user) {
+        if (fault_addr == NULL || !is_user_vaddr(fault_addr))
+            exit(-1);
+    } else {
         /* To implement virtual memory, delete the rest of the function
            body, and replace it with code that brings in the page to
            which fault_addr refers. */
