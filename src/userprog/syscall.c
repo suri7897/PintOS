@@ -48,14 +48,14 @@ int write(int fd, const void* buffer, unsigned size)
     is_valid_addr(buffer);
     struct thread* cur = thread_current();
     if (fd < 0 || fd >= 64) { //! prevent bad fd_value
-        exit(-1);
+        return -1;
     }
 
     lock_acquire(&file_lock);
 
     if (fd == 0) {
         lock_release(&file_lock);
-        exit(-1);
+        return -1;
     } else if (fd == 1) { //! if fd == 1, then put text in buffer.
         putbuf(buffer, size);
         lock_release(&file_lock);
@@ -66,7 +66,7 @@ int write(int fd, const void* buffer, unsigned size)
         struct file* f = cur->fdt[fd];
         if (f == NULL) {
             lock_release(&file_lock);
-            exit(-1);
+            return -1;
         }
         int result = file_write(f, buffer, size);
         lock_release(&file_lock);
@@ -90,7 +90,7 @@ int open(const char* file)
 {
     is_valid_addr((void*)file); //! check file's address is valid
     if (file == NULL) { //! check file is NULL
-        exit(-1);
+        return -1;
     }
     lock_acquire(&file_lock); //! lock the file_sys
     struct thread* cur = thread_current();
@@ -119,13 +119,13 @@ void close(int fd)
     struct thread* cur = thread_current();
     struct file* f;
     if (fd < 0 || fd >= 64) { //! prevent bad fd_value
-        exit(-1);
+        return -1;
     }
     lock_acquire(&file_lock);
     f = cur->fdt[fd]; //! find file matching to file descriptor.
     if (f == NULL) { //! if not found, then return;
         lock_release(&file_lock);
-        exit(-1);
+        return -1;
     }
     file_close(f); //! close the file
     cur->fdt[fd] = NULL; //! release fd to NULL.
@@ -141,7 +141,7 @@ int read(int fd, void* buffer, unsigned size)
     is_valid_addr(buffer); //! check buffer is valid
     struct thread* cur = thread_current();
     if (fd < 0 || fd >= 64) { //! prevent bad fd_value
-        exit(-1);
+        return -1;
     }
 
     int result;
@@ -156,7 +156,7 @@ int read(int fd, void* buffer, unsigned size)
         struct file* f = cur->fdt[fd];
         if (f == NULL) {
             lock_release(&file_lock); //! nothing should be done, so release
-            exit(-1);
+            return -1;
         }
         result = file_read(cur->fdt[fd], buffer, size);
     }
