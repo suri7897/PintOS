@@ -256,6 +256,13 @@ void process_exit(void)
     struct thread* cur = thread_current();
     uint32_t* pd;
 
+    // Signal all children to allow their cleanup
+    struct list_elem* e;
+    for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
+        struct thread* child = list_entry(e, struct thread, child_elem);
+        sema_up(&child->exit_sema); // Allow child to complete cleanup
+    }
+
     //! close all files (project2-2)
     lock_acquire(&file_lock);
     int i;

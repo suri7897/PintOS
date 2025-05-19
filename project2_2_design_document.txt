@@ -238,6 +238,10 @@ Also, in is_valid_addr(), we called exit(-1) if address is invalid. exit(-1) cal
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
+In process_execute(), there is sema_down(&child->load_sema); and then check if child has completed loading successfully.
+In start_process(), there is thread_current()->load_success = success; and sema_up(&thread_current()->load_sema);
+In this process, status of load_success is stored and passed back to the thread that calls "exec".
+Thus, the exec() system call blocks until the child has completed load(), and returns -1 if it failed
 
 
 
@@ -247,6 +251,35 @@ Also, in is_valid_addr(), we called exit(-1) if address is invalid. exit(-1) cal
 >> that all resources are freed in each case?  How about when P
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
+
+1) P calls wait(C) before C exits
+In process_wait, P calls sema_down(&child->wait_sema) to wait for the C to exit. This blocks P until C signals completion.
+In process_exit, C calls sema_up(&cur->wait_sema) to signal that it has finished execution, allowing P to proceed.
+After signaling, C calls sema_down(&cur->exit_sema) to wait until P has retrieved C’s exit status. 
+P signals this by calling sema_up(&child->exit_sema) in process_wait after accessing the exit status.
+Thus, P waits for C to exit before proceeding and C does not free its resources until P has safely retrieved the exit status, 
+avoiding race conditions where P might access freed memory.
+
+2) P calls wait(C) after C exits
+If C has already exited, C will have called sema_up(&cur->wait_sema) in process_exit before terminating.
+When P calls process_wait and executes sema_down(&child->wait_sema), the semaphore’s count is already positive, 
+so P proceeds immediately without blocking.
+P retrieves C’s exit_status and calls sema_up(&child->exit_sema). 
+Since C is waiting on sema_down(&cur->exit_sema) in process_exit, this allows C to complete its cleanup.
+The semaphore mechanism ensures no race condition, as C does not free its resources until P signals via exit_sema.
+
+3) P terminates without waiting before C exits
+When P exits, it calls sema_up(&C->exit_sema).
+When C later exits and calls sema_down(&cur->exit_sema) in process_exit, the semaphore count is positive, 
+so C proceeds without blocking. This prevents C from hanging and ensures proper cleanup.
+P’s exit does not interfere with C’s execution, and C can exit cleanly later without blocking on exit_sema.
+
+4) P terminates without waiting after C exits
+If C has already exited, it will have signaled sema_up(&cur->wait_sema) and be blocked on sema_down(&cur->exit_sema), 
+waiting for P to signal exit_sema.
+In process_exit, P closes its files, destroys its page directory, and frees its memory.
+C completes its cleanup after P’s exit, avoiding resource leaks.
+
 
 
 
