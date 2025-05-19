@@ -533,6 +533,10 @@ init_thread(struct thread* t, const char* name, int priority)
     t->load_success = false;
     t->is_waited = false;
     t->exit_status = -1;
+    int i;
+    for (i = 0; i<64; i++){
+        t->fdt[i] = NULL;
+    }
 #endif
 
     list_push_back(&all_list, &t->allelem);
