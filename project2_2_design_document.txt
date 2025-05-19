@@ -234,6 +234,9 @@ After, parent process get exit status of child, remove the child thread's elemen
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
+
+
+
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
 >> calls wait(C) before C exits?  After C exits?  How do you ensure
@@ -241,16 +244,31 @@ After, parent process get exit status of child, remove the child thread's elemen
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+Since the pointers passed into kernel by syscall can point to the invalid memory, so we choose to implement function is_valid_addr().
+In this function, first check whether it is user address, since system call is implemented in user_level, and check whether the corresponding page is mapped to page_table.
+This could be helpful for protecting kernel from user level task, since it checks whether address is in kernel or user space at first, and can prevent from approaching invalid address. 
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
+We implemented the file descriptor table(fdt[64]) as member of struct thread, with shape of fixed-size array. This array style fdt could be seen as the simplest style of the fd_table, and each file is naturally seperated by the shape of array.
+Also, we can handle files more in simple way because only we need is to access thread's member.
+But, in my way, fixed file descriptor table can be the disadvantage, since in most tests 64 file descriptors are not used, so wasting memories.
+Also, in opposite situation, we cannot open more files due to limited fdt.
+Additionally, when many threads are needed, fdt size could be limitation for max number of threads in one time.
+In last, since it is array, we should find files by indexing all files, leading to inefficient computation of file system.
+
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+We persisted identity mapping to tid_t and pid_t. 
 
                SURVEY QUESTIONS
                ================
