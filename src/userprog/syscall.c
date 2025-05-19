@@ -119,13 +119,13 @@ void close(int fd)
     struct thread* cur = thread_current();
     struct file* f;
     if (fd < 0 || fd >= 64) { //! prevent bad fd_value
-        return -1;
+        return;
     }
     lock_acquire(&file_lock);
     f = cur->fdt[fd]; //! find file matching to file descriptor.
     if (f == NULL) { //! if not found, then return;
         lock_release(&file_lock);
-        return -1;
+        return;
     }
     file_close(f); //! close the file
     cur->fdt[fd] = NULL; //! release fd to NULL.
