@@ -226,6 +226,10 @@ After, parent process get exit status of child, remove the child thread's elemen
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+For address handling, we implemented is_valid_addr() function to validate the address given.
+In this function, it checks whether address is in the user_space, and corresponding page is valid.
+So, we used is_valid_addr() function for each system_call, so can keep our codes clean.
+Also, in is_valid_addr(), we called exit(-1) if address is invalid. exit(-1) calls thread_exit, and thread_exit calls process_exit. process_exit then destroy current process's page directory. During destruction, these allocated resources are freed.
 
 ---- SYNCHRONIZATION ----
 
