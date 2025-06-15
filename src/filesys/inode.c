@@ -9,16 +9,42 @@
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
+#define MAX_DIRECT_IDX 124
+#define MAX_INDIRECT_IDX 128
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
   {
-    block_sector_t start;               /* First data sector. */
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
-    uint32_t unused[125];               /* Not used. */
+    block_sector_t direct_block[MAX_DIRECT_IDX];
+    block_sector_t indirect_block_sec; // entry offset of first indirect block
+    block_sector_t double_indirect_block_sec; // entry offset of second indirect block.
   };
+
+enum direct_method //* indicate the method to point disk block
+{
+  DIRECT, //* use direct block
+  INDIRECT, //* use indirect block
+  DOUBLE_INDIRECT, //* use double indirect block
+  OUT_LIMIT //* wrong offset
+};
+
+  /*
+  * changed structure : change file structure to use direct, indirect, double_indirect block.
+  * In maximum, about 8MB of file can be allocated.
+  */
+
+struct sector_location {
+  enum direct_method method;
+  int first_idx;
+  int second_idx;
+};
+
+struct inode_indirect_block {
+  block_sector_t indirect_block[MAX_INDIRECT_IDX];
+};
 
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
@@ -36,7 +62,8 @@ struct inode
     int open_cnt;                       /* Number of openers. */
     bool removed;                       /* True if deleted, false otherwise. */
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
-    struct inode_disk data;             /* Inode content. */
+    // struct inode_disk data;             /* Inode content. */ 
+    //* inode_disk is erased
   };
 
 /* Returns the block device sector that contains byte offset POS
@@ -342,4 +369,39 @@ off_t
 inode_length (const struct inode *inode)
 {
   return inode->data.length;
+}
+
+static bool get_disk_inode(const struct inode *inode, struct inode_disk *inode_disk){ //* get inode from disk
+  block_read(fs_device, inode->sector, inode_disk);
+}
+
+static void save_secloc (off_t pos, struct sector_location *sec_loc){ //* save location of sector corresponding to pos.
+  
+  off_t pos_idx = pos / BLOCK_SECTOR_SIZE;
+
+  if(pos_idx < (off_t)MAX_DIRECT_IDX) //* if we can handle in direct method
+  { 
+    sec_loc->method = DIRECT;
+    sec_loc->first_idx = -1; //* first, second idx is not needed, since it is direct.
+    sec_loc->second_idx = -1;
+  } 
+  else if(pos_idx < (off_t)(MAX_DIRECT_IDX + MAX_INDIRECT_IDX)) //* indirect method
+  { 
+    sec_loc->method = INDIRECT;
+    sec_loc->first_idx = pos_idx - (off_t)MAX_DIRECT_IDX;
+    sec_loc->second_idx = -1;
+  } 
+  else if(pos_idx < (off_t)(MAX_DIRECT_IDX + MAX_INDIRECT_IDX + MAX_INDIRECT_IDX * MAX_INDIRECT_IDX)) 
+  {
+    sec_loc->method = DOUBLE_INDIRECT;
+    off_t doub_ind_idx = pos_idx - MAX_DIRECT_IDX - MAX_INDIRECT_IDX; 
+    sec_loc->first_idx = doub_ind_idx / MAX_INDIRECT_IDX;
+    sec_loc->second_idx = doub_ind_idx % MAX_INDIRECT_IDX;
+  } 
+  else 
+  {
+    sec_loc->method = OUT_LIMIT;
+    sec_loc->first_idx = -1;
+    sec_loc->second_idx = -1;
+  }
 }
