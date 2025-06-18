@@ -127,11 +127,13 @@ static bool register_indirect(block_sector_t *indirect_sec_ptr, block_sector_t n
 
 static bool register_double_indirect(block_sector_t *double_indirect_ptr, block_sector_t new_sector, int outer_idx, int inner_idx) {
   struct inode_indirect_block outer, inner;
+  bool need_outer = false;
 
   if (*double_indirect_ptr == 0) {
     if (!free_map_allocate(1, double_indirect_ptr))
       return false;
     memset(&outer, 0, sizeof outer);
+    need_outer = true;
   } else {
     block_read(fs_device, *double_indirect_ptr, &outer);
   }
@@ -148,8 +150,14 @@ static bool register_double_indirect(block_sector_t *double_indirect_ptr, block_
 
   inner.indirect_block[inner_idx] = new_sector;
   block_write(fs_device, outer.indirect_block[outer_idx], &inner);
+
+  if (need_outer || outer.indirect_block[outer_idx] != 0) {
+    block_write(fs_device, *double_indirect_ptr, &outer);
+  }
+
   return true;
 }
+
 
 static bool register_sector(struct inode_disk* inode_disk, block_sector_t new_sector, struct sector_location sec_loc) {
   switch (sec_loc.method) {
@@ -321,16 +329,20 @@ bool check_sector_allocation(struct inode_disk *inode_disk, off_t sector_index) 
   static char zeros[BLOCK_SECTOR_SIZE] = {0};
 
   block_sector_t *target = get_sector_ptr(inode_disk, &loc);
-  if (target == NULL)
-    return false;
 
-  if (*target == 0) {
-    if (!free_map_allocate(1, target))
+  if (target == NULL || *target == 0) {
+    block_sector_t new_sector;
+    if (!free_map_allocate(1, &new_sector))
       return false;
 
-    if (!register_sector(inode_disk, *target, loc))
+    if (!register_sector(inode_disk, new_sector, loc))
       return false;
 
+    target = get_sector_ptr(inode_disk, &loc);
+    if (target == NULL)
+      return false;
+
+    *target = new_sector;
     block_write(fs_device, *target, zeros);
   }
 
@@ -347,9 +359,8 @@ bool inode_grow(struct inode_disk *inode_disk, off_t old_pos, off_t new_pos) {
       return false;
   }
 
-  off_t new_len = new_sec * BLOCK_SECTOR_SIZE;
-  if (inode_disk->length < new_len)
-    inode_disk->length = new_len;
+  if (inode_disk->length < new_pos)
+    inode_disk->length = new_pos;
 
   return true;
 }
