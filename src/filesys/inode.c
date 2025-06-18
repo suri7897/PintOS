@@ -318,6 +318,8 @@ bool check_sector_allocation(struct inode_disk *inode_disk, off_t sector_index) 
   struct sector_location loc;
   save_secloc(sector_index * BLOCK_SECTOR_SIZE, &loc);
 
+  static char zeros[BLOCK_SECTOR_SIZE] = {0};
+
   block_sector_t *target = get_sector_ptr(inode_disk, &loc);
   if (target == NULL)
     return false;
@@ -328,6 +330,8 @@ bool check_sector_allocation(struct inode_disk *inode_disk, off_t sector_index) 
 
     if (!register_sector(inode_disk, *target, loc))
       return false;
+
+    block_write(fs_device, *target, zeros);
   }
 
   return true;
@@ -343,7 +347,7 @@ bool inode_grow(struct inode_disk *inode_disk, off_t old_pos, off_t new_pos) {
       return false;
   }
 
-  off_t new_len = (new_sec + 1) * BLOCK_SECTOR_SIZE;
+  off_t new_len = new_sec * BLOCK_SECTOR_SIZE;
   if (inode_disk->length < new_len)
     inode_disk->length = new_len;
 
