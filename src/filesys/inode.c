@@ -182,17 +182,17 @@ byte_to_sector (const struct inode_disk *inode_disk, off_t pos)
   block_sector_t sector_num = -1; //* -1 indicate error
 
   if(pos < inode_disk->length){
-    struct inode_indirect_block *ind_block;
     struct sector_location sec_loc;
     save_secloc(pos, &sec_loc);
 
     switch (sec_loc.method)
     {
-    case DIRECT: 
+    case DIRECT: {
       sector_num = inode_disk->direct_block[pos/BLOCK_SECTOR_SIZE];
       break;
-    case INDIRECT:
-      ind_block = (struct inode_indirect_block *)malloc(BLOCK_SECTOR_SIZE);
+    }
+    case INDIRECT: {
+      struct inode_indirect_block *ind_block = malloc(BLOCK_SECTOR_SIZE);
       if(ind_block == NULL){
         break;
       }
@@ -203,22 +203,28 @@ byte_to_sector (const struct inode_disk *inode_disk, off_t pos)
       }
       free(ind_block);
       break;
-    case DOUBLE_INDIRECT:
-      ind_block = (struct inode_indirect_block *)malloc(BLOCK_SECTOR_SIZE);
-      if(ind_block == NULL)
-        break;
-      block_read(fs_device, inode_disk->indirect_block_sec, ind_block);
-      block_sector_t double_ind_sector = ind_block->indirect_block[sec_loc.first_idx];
-      
-      if(double_ind_sector == 0){
-        free(ind_block);
+    }
+    case DOUBLE_INDIRECT: {
+        struct inode_indirect_block *outer_block = malloc(BLOCK_SECTOR_SIZE);
+        if (outer_block == NULL){
+          break;
+        }
+        block_read(fs_device, inode_disk->double_indirect_block_sec, outer_block);
+        block_sector_t inner_sec = outer_block->indirect_block[sec_loc.first_idx];
+        free(outer_block);
+
+        if (inner_sec == 0){ 
+          break;
+        }
+        struct inode_indirect_block *inner_block = malloc(BLOCK_SECTOR_SIZE);
+        if (inner_block == NULL){ 
+          break;
+        }
+        block_read(fs_device, inner_sec, inner_block);
+        sector_num = inner_block->indirect_block[sec_loc.second_idx];
+        free(inner_block);
         break;
       }
-
-      block_read(fs_device, double_ind_sector, ind_block);
-      sector_num = ind_block->indirect_block[sec_loc.second_idx];
-      free(ind_block);
-      break;
 
     default:
       break;
@@ -518,6 +524,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   struct inode_disk *disk_inode = malloc(sizeof(struct inode_disk));
   if (disk_inode == NULL)
     return 0;
+    
   get_disk_inode(inode, disk_inode);
 
   while (size > 0) 
@@ -583,6 +590,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     return 0;
 
   struct inode_disk *disk_inode = malloc(sizeof(struct inode_disk));
+
   if (disk_inode == NULL)
     return 0;
   get_disk_inode(inode, disk_inode);
@@ -593,6 +601,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       free(disk_inode);
       return 0;
     }
+    block_write(fs_device, inode->sector, disk_inode);
   }
 
   while (size > 0) 
