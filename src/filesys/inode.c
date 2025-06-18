@@ -80,7 +80,7 @@ static void save_secloc (off_t pos, struct sector_location *sec_loc){ //* save l
   if(pos_idx < (off_t)MAX_DIRECT_IDX) //* if we can handle in direct method
   { 
     sec_loc->method = DIRECT;
-    sec_loc->first_idx = -1; //* first, second idx is not needed, since it is direct.
+    sec_loc->first_idx = pos_idx; //* second idx is not needed, since it is direct.
     sec_loc->second_idx = -1;
   } 
   else if(pos_idx < (off_t)(MAX_DIRECT_IDX + MAX_INDIRECT_IDX)) //* indirect method
