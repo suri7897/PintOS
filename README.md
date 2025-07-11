@@ -9,4 +9,4 @@
 
 All tests should be passed.
 
-### ✅ 104/109 passed. (82.7/100) 
+### ✅ 104/109 passed. (82.7%/100%) 
