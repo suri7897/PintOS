@@ -1,4 +1,4 @@
-## PintOS Project 3
+PintOS Project 3
 ---
 
 ### Requirements
