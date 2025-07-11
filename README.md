@@ -1,2 +1,12 @@
-미처 테스트 환경에서 TIMEOUT = 10으로 설정해둔 상태로 push를 하였습니다.
-테스트 시 TIMEOUT = 120으로 설정해주신 후 테스트 해주신다면 정말로 감사드리겠습니다.
+## PintOS Project 3
+---
+
+### Requirements
+
+* Implemented Virtual Memory (Supplementary page table)
+* Implemented Swapping, Stack growth
+* Implemented Memory mapped-file
+
+All tests should be passed.
+
+### ✅ 104/109 passed. (82.7/100) 
