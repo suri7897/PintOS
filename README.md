@@ -1,4 +1,4 @@
-## PintOS Project 1
+PintOS Project 1
 ---
 
 ### Requirements
