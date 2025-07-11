@@ -20,7 +20,7 @@ Required tests for pass
 - alarm-negative
 
 #### Priority-Scheduling
-- priority-chang/e
+- priority-change
 - priority-preempt
 - priority-fifo
 
