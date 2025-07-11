@@ -8,7 +8,7 @@
 
 <br>
 
-<summary><strong><span style="font-size: 1.3em"> Required tests for pass</span></strong></summary>
+<summary><strong><span style="font-size: 2.0em"> Required tests for pass</span></strong></summary>
 
 #### Alarm-Clock
 - alarm-single  
