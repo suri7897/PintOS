@@ -17,7 +17,8 @@ Codes are available by switching each branch.
 
 ### Project 2-2
 
-* Implemented leftover system call (read, write, exec, wait, remove, filesize, seek, tell)
+* Implemented remaining system call (read, write, exec, wait, remove, filesize, seek, tell)
+* Implemented Synchronization for process wait, process execute.
 * Denying Write to Executable
 
 ### Project 3
