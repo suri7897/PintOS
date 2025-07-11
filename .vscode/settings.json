@@ -1,0 +1,22 @@
+{
+    "files.associations": {
+        "stack": "c",
+        "syscall-nr.h": "c",
+        "cstdlib": "c",
+        "locale": "c",
+        "timer.h": "c",
+        "string": "c",
+        "pagedir.h": "c",
+        "synch.h": "c",
+        "palloc.h": "c",
+        "malloc.h": "c",
+        "process.h": "c",
+        "frame.h": "c",
+        "stdio.h": "c",
+        "interrupt.h": "c",
+        "vaddr.h": "c",
+        "file.h": "c",
+        "thread.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
+}
