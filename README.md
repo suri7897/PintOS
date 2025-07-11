@@ -1,4 +1,4 @@
-## PintOS Project 
+PintOS Project 
 ---
 PintOS project done during Operating System Course. Original skeleton-code is available in http://www.stanford.edu/class/cs140/projects/pintos/pintos.tar.gz.
 
