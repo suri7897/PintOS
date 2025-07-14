@@ -4,6 +4,7 @@ PintOS Project 4
 ### Requirements
 
 * Implemented Extensible File (Double-Indirect block entry)
+  - Buffer Cache, Subdirectory is excluded.
 
 <br>
 
