@@ -25,4 +25,4 @@ Required tests for pass
 - priority-fifo
 
 
-<strong>✅ All passed </strong>
+<strong>✅ 9/9 All passed </strong>
