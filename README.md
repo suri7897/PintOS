@@ -1,6 +1,6 @@
 PintOS Project 
 ---
-PintOS project done during Operating System Course(2025-1). Original skeleton-code is available in http://www.stanford.edu/class/cs140/projects/pintos/pintos.tar.gz.
+PintOS project done during Operating System Course(2025-1). Original skeleton-code is available in http://www.stanford.edu/class/cs140/projects/pintos
 
 Codes are available by switching each branch.
 
