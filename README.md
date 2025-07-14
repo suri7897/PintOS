@@ -33,5 +33,5 @@ Codes are available by switching each branch.
 
 Contributor
 ---
-1. KangJun Lee (suri7897@unist.ac.kr)
-2. Donguk Kim (freezing16@unist.ac.kr)
+* KangJun Lee (suri7897@unist.ac.kr)
+* Donguk Kim (freezing16@unist.ac.kr)
