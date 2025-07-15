@@ -1,17 +1,18 @@
-# PintOS Project 🐧  
+PintOS Project 🐧
+---
 **Operating Systems Course Project (2025-1)**  
 > All original content of PintOS is available at [Stanford CS140 PintOS](http://www.stanford.edu/class/cs140/projects/pintos)  
 > 📌 Source code available through branch switching  
 
----
 
-## 🚀 Overview  
+🚀 Overview
+---
 This project is based on **PintOS**, a simple operating system framework used for educational purposes.  
 Throughout the semester, we gradually built and expanded core components of the OS, focusing on **thread management, system calls, virtual memory**, and **file systems**.
 
----
 
-## 🧩 Project Breakdown
+🧩 Project Breakdown
+---
 
 ### 📍 Project 1 – **Threads & Scheduling**
 - Implemented an **alarm clock** feature using timer interrupts.
