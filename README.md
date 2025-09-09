@@ -1,8 +1,9 @@
-PintOS Project 
----
+# PintOS Project 
+
 **Operating Systems Course Project (2025-1)**  
+>[!NOTE]
 > All original content of PintOS is available at [Stanford CS140 PintOS](http://www.stanford.edu/class/cs140/projects/pintos)  
-> Source code available through branch switching  
+> Source code available through branch switching.  
 
 
 Overview
@@ -35,7 +36,6 @@ Project Breakdown
 ### Project 4 – **File System**
 - Extended the file system to support **double-indirect block entries** for larger files.
 
----
 
 ## Contributors
 - **KangJun Lee** | [suri7897@unist.ac.kr](mailto:suri7897@unist.ac.kr)  
